@@ -1,0 +1,4234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fiddler-to-vugen-v15.html</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+/* -----------------------------------------------------------------------
+   DESIGN TOKENS — Material 3 / Apple-inspired dark palette
+   ----------------------------------------------------------------------- */
+:root {
+  /* Brand */
+  --magenta:        #E20074;
+  --magenta-dark:   #B5005C;
+  --magenta-soft:   rgba(226,0,116,0.12);
+  --magenta-glow:   rgba(226,0,116,0.35);
+  --magenta-border: rgba(226,0,116,0.3);
+
+  /* Backgrounds */
+  --bg:             #0A0A0F;
+  --surface:        #13131A;
+  --surface-raised: #1C1C28;
+  --surface-hover:  rgba(255,255,255,0.04);
+
+  /* Borders */
+  --border:         rgba(255,255,255,0.07);
+  --border-strong:  rgba(255,255,255,0.14);
+
+  /* Text */
+  --text-primary:   #F0F0F5;
+  --text-secondary: #8A8A9A;
+  --text-muted:     #4A4A5A;
+
+  /* Semantic — Apple palette */
+  --success:        #30D158;
+  --warning:        #FFD60A;
+  --info:           #0A84FF;
+  --danger:         #FF453A;
+
+  /* Motion */
+  --ease:           cubic-bezier(0.4, 0, 0.2, 1);
+  --duration:       0.2s;
+
+  /* Radius scale */
+  --r-input:        10px;
+  --r-card:         12px;
+  --r-badge:        6px;
+  --r-chip:         20px;
+  --r-pill:         100px;
+}
+
+/* -----------------------------------------------------------------------
+   RESET & BASE
+   ----------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input[type="file"] { display: none; }
+
+/* -----------------------------------------------------------------------
+   SCROLLBAR
+   ----------------------------------------------------------------------- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(226,0,116,0.4);
+  border-radius: 3px;
+  transition: background var(--duration) var(--ease);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--magenta); }
+
+/* -----------------------------------------------------------------------
+   HEADER
+   ----------------------------------------------------------------------- */
+.header {
+  background: linear-gradient(135deg, #E20074 0%, #B5005C 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  z-index: 10;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 2px 24px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.1) inset;
+}
+
+.header-logo {
+  background: #ffffff;
+  color: #E20074;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.3px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.header-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.70);
+  margin-top: 1px;
+  letter-spacing: 0.01em;
+}
+
+.header-version-pill {
+  margin-left: auto;
+  border: 1.5px solid rgba(255,255,255,0.65);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 11px;
+  border-radius: var(--r-pill);
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+/* -----------------------------------------------------------------------
+   THREE-PANEL LAYOUT
+   ----------------------------------------------------------------------- */
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.left-panel {
+  width: 280px;
+  min-width: 280px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 14px;
+  gap: 20px;
+  flex-shrink: 0;
+  animation: panelFadeIn var(--duration) var(--ease) both;
+}
+
+.middle-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  animation: panelFadeIn var(--duration) var(--ease) 0.1s both;
+}
+
+.right-panel {
+  width: 480px;
+  min-width: 480px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  animation: panelFadeIn var(--duration) var(--ease) 0.2s both;
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* -----------------------------------------------------------------------
+   RESIZE HANDLES
+   ----------------------------------------------------------------------- */
+.resize-handle {
+  width: 4px;
+  background: transparent;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background var(--duration) var(--ease);
+  position: relative;
+  z-index: 5;
+}
+.resize-handle:hover { background: rgba(226,0,116,0.3); }
+.resize-handle.dragging { background: var(--magenta); }
+
+/* -----------------------------------------------------------------------
+   SECTION LABELS  (Apple-style ALL CAPS track labels)
+   ----------------------------------------------------------------------- */
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* -----------------------------------------------------------------------
+   UPLOAD ZONE
+   ----------------------------------------------------------------------- */
+.upload-zone {
+  border: 2px dashed rgba(226,0,116,0.3);
+  border-radius: 16px;
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+  background: var(--surface-raised);
+  position: relative;
+  overflow: hidden;
+}
+.upload-zone:hover {
+  border-color: var(--magenta);
+  background: rgba(226,0,116,0.05);
+  transform: scale(1.01);
+}
+.upload-zone.drag-over {
+  border-color: var(--magenta);
+  background: rgba(226,0,116,0.07);
+  box-shadow: 0 0 0 3px rgba(226,0,116,0.2);
+  transform: scale(1.01);
+}
+
+.upload-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  color: var(--magenta);
+  width: 40px;
+  height: 40px;
+}
+.upload-icon svg { width: 36px; height: 36px; }
+
+.upload-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.upload-text strong { color: var(--magenta); font-weight: 600; }
+.upload-subtext {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.upload-filename {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--success);
+  margin-top: 8px;
+  word-break: break-all;
+}
+
+/* -----------------------------------------------------------------------
+   PROGRESS BAR
+   ----------------------------------------------------------------------- */
+.progress-bar-wrap {
+  height: 3px;
+  background: var(--surface-raised);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 8px;
+  display: none;
+}
+.progress-bar-inner {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--magenta-dark), var(--magenta));
+  border-radius: 2px;
+  transition: width 0.3s var(--ease);
+  animation: progressPulse 1.5s ease-in-out infinite;
+}
+@keyframes progressPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* -----------------------------------------------------------------------
+   ERROR BANNER
+   ----------------------------------------------------------------------- */
+.error-banner {
+  background: rgba(255,69,58,0.10);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--r-input);
+  padding: 8px 12px;
+  font-size: 12px;
+  display: none;
+  margin-top: 8px;
+}
+
+/* -----------------------------------------------------------------------
+   FORM CONTROLS
+   ----------------------------------------------------------------------- */
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+
+.form-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.form-input {
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--r-input);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 400;
+  outline: none;
+  transition: border-color var(--duration) var(--ease),
+              box-shadow var(--duration) var(--ease);
+  width: 100%;
+}
+.form-input:focus {
+  border-color: var(--magenta);
+  box-shadow: 0 0 0 3px rgba(226,0,116,0.15);
+}
+.form-input::placeholder { color: var(--text-muted); }
+
+/* -----------------------------------------------------------------------
+   CHECKBOX GROUP
+   ----------------------------------------------------------------------- */
+.checkbox-group { display: flex; flex-direction: column; gap: 9px; }
+
+.checkbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-primary);
+  user-select: none;
+  transition: color var(--duration) var(--ease);
+}
+.checkbox-item:hover { color: #ffffff; }
+
+.checkbox-item input[type="checkbox"] {
+  accent-color: var(--magenta);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.checkbox-desc {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 300;
+  margin-top: 1px;
+}
+
+/* -----------------------------------------------------------------------
+   BUTTONS
+   ----------------------------------------------------------------------- */
+.btn {
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  font-family: inherit;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--magenta) 0%, var(--magenta-dark) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 15px var(--magenta-glow);
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(226,0,116,0.5);
+  filter: brightness(1.08);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px var(--magenta-glow);
+}
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-secondary {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.2);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.btn-secondary:active:not(:disabled) { transform: scale(0.98); }
+.btn-secondary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Danger / clear session */
+.btn-clear-session {
+  width: 100%;
+  border: 1px solid rgba(255,69,58,0.30);
+  background: rgba(255,69,58,0.08);
+  color: var(--danger);
+  border-radius: var(--r-pill);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+}
+.btn-clear-session:hover {
+  background: rgba(255,69,58,0.18);
+  border-color: var(--danger);
+  transform: translateY(-1px);
+}
+
+/* Amber action button (Exclude, Remove Header) */
+.btn-amber {
+  background: rgba(255,214,10,0.10);
+  color: var(--warning);
+  border: 1px solid rgba(255,214,10,0.28);
+  border-radius: var(--r-input);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn-amber:hover {
+  background: rgba(255,214,10,0.18);
+  transform: translateY(-1px);
+}
+.btn-amber.flash-success {
+  background: rgba(48,209,88,0.15);
+  color: var(--success);
+  border-color: rgba(48,209,88,0.35);
+}
+
+/* Inline clear (X) */
+.btn-clear {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+/* Manual Correlation Overrides */
+.manual-corr-section {
+  flex-shrink: 0;
+  margin-top: 10px;
+  border: 1px solid rgba(226,0,116,0.22);
+  border-radius: var(--r-panel);
+  overflow: hidden;
+}
+.manual-corr-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(226,0,116,0.07);
+  border-bottom: 1px solid rgba(226,0,116,0.15);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--magenta);
+}
+.manual-corr-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.manual-corr-row:last-child { border-bottom: none; }
+.manual-corr-empty {
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+.manual-param-name-inp {
+  width: 160px;
+  flex-shrink: 0;
+}
+.manual-param-value-inp {
+  flex: 1;
+  font-family: monospace;
+  font-size: 11px;
+}
+.btn-remove-row {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(255,69,58,0.3);
+  color: var(--danger);
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration) var(--ease);
+  line-height: 1;
+}
+.btn-remove-row:hover { background: rgba(255,69,58,0.12); border-color: var(--danger); }
+
+/* Sample file button */
+.btn-sample {
+  width: 100%;
+  background: rgba(226,0,116,0.08);
+  border: 1px dashed rgba(226,0,116,0.45);
+  color: var(--magenta);
+  border-radius: var(--r-input);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--duration) var(--ease);
+  margin-top: 8px;
+}
+.btn-sample:hover {
+  background: rgba(226,0,116,0.15);
+  border-color: var(--magenta);
+  transform: translateY(-1px);
+}
+.btn-sample:active { transform: scale(0.98); }
+
+/* Generate button pulse after sample load */
+@keyframes generatePulse {
+  0%   { box-shadow: 0 0 0 0 rgba(226,0,116,0.7); }
+  60%  { box-shadow: 0 0 0 10px rgba(226,0,116,0); }
+  100% { box-shadow: 0 0 0 0 rgba(226,0,116,0); }
+}
+.generate-pulse-active {
+  animation: generatePulse 1.2s ease-out infinite;
+  border: 2px solid rgba(226,0,116,0.8) !important;
+}
+
+/* "Next step" hint arrow under generate button */
+.generate-hint {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--magenta);
+  font-weight: 500;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(226,0,116,0.08);
+  animation: fadeInDown 0.4s var(--ease);
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* -----------------------------------------------------------------------
+   STAT CARDS
+   ----------------------------------------------------------------------- */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.stat-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--magenta);
+  border-radius: var(--r-card);
+  padding: 12px 10px;
+  text-align: center;
+  transition: all var(--duration) var(--ease);
+}
+.stat-card:hover {
+  border-color: var(--border-strong);
+  border-left-color: var(--magenta);
+  transform: translateY(-1px);
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--magenta);
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.stat-full { grid-column: 1 / -1; }
+
+/* -----------------------------------------------------------------------
+   MIDDLE PANEL HEADER
+   ----------------------------------------------------------------------- */
+.panel-header {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  background: var(--surface);
+}
+
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.count-badge {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  transition: all var(--duration) var(--ease);
+}
+.count-badge.accent {
+  background: var(--magenta-soft);
+  border-color: var(--magenta-border);
+  color: var(--magenta);
+}
+
+/* -----------------------------------------------------------------------
+   SELECT ALL ROW
+   ----------------------------------------------------------------------- */
+.select-all-row {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.select-all-row label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.select-all-row input[type="checkbox"] {
+  accent-color: var(--magenta);
+  width: 13px;
+  height: 13px;
+}
+.selected-count { font-size: 12px; color: var(--text-secondary); }
+.selected-count span { color: var(--magenta); font-weight: 600; }
+
+/* -----------------------------------------------------------------------
+   FILTER BARS
+   ----------------------------------------------------------------------- */
+.filter-bar {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.filter-input {
+  flex: 1;
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-input);
+  padding: 6px 12px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--duration) var(--ease),
+              box-shadow var(--duration) var(--ease);
+  min-width: 0;
+}
+.filter-input:focus {
+  border-color: var(--magenta);
+  box-shadow: 0 0 0 3px rgba(226,0,116,0.15);
+}
+.filter-input::placeholder { color: var(--text-muted); }
+
+.filter-match-count {
+  font-size: 11px;
+  color: var(--warning);
+  white-space: nowrap;
+}
+
+/* Status code filter */
+.status-filter-bar {
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.status-filter-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.status-filter-input {
+  width: 80px;
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-input);
+  padding: 5px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  outline: none;
+  transition: border-color var(--duration) var(--ease),
+              box-shadow var(--duration) var(--ease);
+}
+.status-filter-input:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255,69,58,0.15);
+}
+.status-filter-input.has-value { border-color: rgba(255,69,58,0.6); color: var(--danger); }
+
+/* Method filter bar */
+.method-filter-bar {
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.method-filter-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.method-filter-select {
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-input);
+  padding: 5px 28px 5px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A8A9A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color var(--duration) var(--ease),
+              box-shadow var(--duration) var(--ease);
+  min-width: 100px;
+}
+.method-filter-select:focus {
+  border-color: var(--magenta);
+  box-shadow: 0 0 0 3px rgba(226,0,116,0.15);
+}
+.method-filter-select option {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+.method-match-count {
+  font-size: 11px;
+  color: var(--magenta);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Header filter bar (right panel) */
+.header-filter-bar {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.header-filter-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.header-filter-input {
+  flex: 1;
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-input);
+  padding: 5px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  outline: none;
+  transition: border-color var(--duration) var(--ease),
+              box-shadow var(--duration) var(--ease);
+  min-width: 0;
+}
+.header-filter-input:focus {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 3px rgba(255,214,10,0.12);
+}
+.header-filter-input.has-value { border-color: rgba(255,214,10,0.6); color: var(--warning); }
+.header-filter-input::placeholder { color: var(--text-muted); }
+
+/* -----------------------------------------------------------------------
+   FIND & REPLACE BAR (Action.c right panel)
+   ----------------------------------------------------------------------- */
+.find-replace-bar {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.find-replace-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.find-replace-input {
+  flex: 1;
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-input);
+  padding: 5px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  outline: none;
+  transition: border-color var(--duration) var(--ease),
+              box-shadow var(--duration) var(--ease);
+  min-width: 0;
+}
+.find-replace-input:focus {
+  border-color: var(--info);
+  box-shadow: 0 0 0 3px rgba(10,132,255,0.12);
+}
+.find-replace-input.has-value { border-color: rgba(10,132,255,0.55); color: var(--info); }
+.find-replace-input::placeholder { color: var(--text-muted); }
+
+/* -----------------------------------------------------------------------
+   REMOVED HEADERS CHIP LIST
+   ----------------------------------------------------------------------- */
+.removed-headers-list {
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(226,0,116,0.04);
+  flex-shrink: 0;
+  align-items: center;
+}
+.removed-header-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.removed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(226,0,116,0.10);
+  border: 1px solid rgba(226,0,116,0.30);
+  color: rgba(255,102,170,0.9);
+  border-radius: var(--r-chip);
+  padding: 2px 6px 2px 10px;
+  font-size: 11px;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+}
+.restore-chip-btn {
+  background: rgba(48,209,88,0.12);
+  border: 1px solid rgba(48,209,88,0.30);
+  color: var(--success);
+  border-radius: 12px;
+  padding: 1px 6px;
+  font-size: 10px;
+  cursor: pointer;
+  line-height: 1.5;
+  transition: background var(--duration) var(--ease);
+  font-family: inherit;
+}
+.restore-chip-btn:hover { background: rgba(48,209,88,0.24); }
+
+/* -----------------------------------------------------------------------
+   EXCLUDED SESSIONS PANEL
+   ----------------------------------------------------------------------- */
+.excluded-panel-header {
+  padding: 7px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  user-select: none;
+  flex-shrink: 0;
+  transition: all var(--duration) var(--ease);
+}
+.excluded-panel-header:hover {
+  background: rgba(226,0,116,0.05);
+  border-left-color: var(--magenta);
+}
+
+.excluded-list {
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.excluded-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 11px;
+}
+.excluded-item:last-child { border-bottom: none; }
+.excluded-url {
+  flex: 1;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 11px;
+}
+.btn-reinclude {
+  background: rgba(48,209,88,0.10);
+  border: 1px solid rgba(48,209,88,0.28);
+  color: var(--success);
+  border-radius: 8px;
+  padding: 2px 9px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--duration) var(--ease);
+  font-family: inherit;
+}
+.btn-reinclude:hover { background: rgba(48,209,88,0.20); }
+
+/* -----------------------------------------------------------------------
+   SESSIONS TABLE
+   ----------------------------------------------------------------------- */
+.sessions-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+
+.sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.sessions-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  z-index: 2;
+}
+.sessions-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+  transition: background var(--duration) var(--ease);
+}
+
+/* Selected row highlight */
+.sessions-table tr.selected-row > td { background: rgba(226,0,116,0.08); }
+.sessions-table tr.selected-row > td:first-child { box-shadow: inset 3px 0 0 var(--magenta); }
+
+/* Excluded row */
+.sessions-table tr.excluded { opacity: 0.35; filter: grayscale(0.3); }
+
+/* Hover */
+.sessions-table tr:hover td { background: rgba(226,0,116,0.05); }
+.sessions-table tr:hover td:first-child { box-shadow: inset 2px 0 0 rgba(226,0,116,0.5); }
+
+/* Row fade-in on parse */
+@keyframes rowFadeIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+.sessions-table tbody tr {
+  animation: rowFadeIn 0.18s var(--ease) both;
+}
+
+.url-cell {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #C0C0D0;
+  font-size: 11px;
+}
+.url-cell:hover { color: var(--text-primary); }
+
+/* -----------------------------------------------------------------------
+   METHOD & STATUS BADGES
+   ----------------------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: var(--r-badge);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Method badges */
+.badge-get    { background: rgba(48,209,88,0.15);  color: #30D158; border: 1px solid rgba(48,209,88,0.3); }
+.badge-post   { background: rgba(10,132,255,0.15); color: #0A84FF; border: 1px solid rgba(10,132,255,0.3); }
+.badge-put    { background: rgba(255,214,10,0.15); color: #FFD60A; border: 1px solid rgba(255,214,10,0.3); }
+.badge-delete { background: rgba(255,69,58,0.15);  color: #FF453A; border: 1px solid rgba(255,69,58,0.3); }
+.badge-patch  { background: rgba(191,90,242,0.15); color: #BF5AF2; border: 1px solid rgba(191,90,242,0.3); }
+.badge-other  { background: rgba(138,138,154,0.15); color: var(--text-secondary); border: 1px solid rgba(138,138,154,0.2); }
+
+/* Status badges */
+.badge-2xx { background: rgba(48,209,88,0.15);  color: #30D158; border: 1px solid rgba(48,209,88,0.3); }
+.badge-3xx { background: rgba(10,132,255,0.15); color: #0A84FF; border: 1px solid rgba(10,132,255,0.3); }
+.badge-4xx { background: rgba(255,214,10,0.15); color: #FFD60A; border: 1px solid rgba(255,214,10,0.3); }
+.badge-5xx { background: rgba(255,69,58,0.15);  color: #FF453A; border: 1px solid rgba(255,69,58,0.3); }
+
+/* -----------------------------------------------------------------------
+   EMPTY STATE
+   ----------------------------------------------------------------------- */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 32px;
+  text-align: center;
+}
+.empty-icon { font-size: 40px; opacity: 0.25; }
+.empty-title { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+.empty-desc  { font-size: 12px; font-weight: 300; color: var(--text-secondary); opacity: 0.7; }
+
+/* -----------------------------------------------------------------------
+   RIGHT PANEL — TABS
+   ----------------------------------------------------------------------- */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.tab-bar::-webkit-scrollbar { height: 3px; }
+.tab-bar::-webkit-scrollbar-thumb { background: var(--border); }
+
+.tab-btn {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration) var(--ease),
+              border-color var(--duration) var(--ease),
+              background var(--duration) var(--ease);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+}
+.tab-btn:hover { color: var(--magenta); }
+.tab-btn.active {
+  color: var(--magenta);
+  border-bottom-color: var(--magenta);
+  background: rgba(226,0,116,0.06);
+}
+
+.tab-badge {
+  background: var(--magenta);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* -----------------------------------------------------------------------
+   CODE PANEL
+   ----------------------------------------------------------------------- */
+.code-panel {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.code-scroll { flex: 1; overflow: auto; }
+.code-scroll pre {
+  margin: 0;
+  padding: 16px;
+  font-size: 11.5px;
+  line-height: 1.65;
+  min-height: 100%;
+  background: transparent !important;
+}
+.code-scroll code {
+  background: transparent !important;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace !important;
+}
+.hljs { background: transparent !important; }
+
+/* -----------------------------------------------------------------------
+   CORRELATIONS PANEL
+   ----------------------------------------------------------------------- */
+.corr-panel { flex: 1; overflow: auto; padding: 0; }
+
+.corr-notice {
+  background: var(--magenta-soft);
+  border-bottom: 1px solid var(--magenta-border);
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.corr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  background: transparent;
+}
+.corr-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--magenta);
+  z-index: 2;
+  position: relative;
+  overflow: visible !important;
+  white-space: nowrap;
+}
+.corr-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+.corr-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+.corr-table tr.corr-disabled td  { opacity: 0.42; }
+
+/* Column resizer */
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 2;
+  background: transparent;
+  transition: background 0.15s var(--ease);
+}
+.col-resizer:hover, .col-resizer.resizing { background: var(--magenta); opacity: 0.7; }
+
+.captured-value-cell {
+  max-width: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* -----------------------------------------------------------------------
+   INLINE BADGES — correlations
+   ----------------------------------------------------------------------- */
+.param-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--magenta);
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 11px;
+  width: 100%;
+  outline: none;
+  padding: 1px 2px;
+  transition: border-color 0.15s var(--ease);
+}
+.param-input:focus { border-bottom-color: var(--magenta); }
+
+.session-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--r-badge);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 5px;
+  margin: 1px;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: var(--r-badge);
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--magenta-soft);
+  color: var(--magenta);
+  white-space: nowrap;
+}
+
+/* Correlation filter bars (mirrors .method-filter-bar / .status-filter-bar) */
+.corr-filter-bar {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.corr-filter-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.corr-type-select {
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-input);
+  padding: 5px 28px 5px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A8A9A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+  min-width: 130px;
+}
+.corr-type-select:focus {
+  border-color: var(--magenta);
+  box-shadow: 0 0 0 3px rgba(226,0,116,0.15);
+}
+.corr-type-select option { background: var(--surface-raised); color: var(--text-primary); }
+.corr-value-input {
+  width: 200px;
+  background: var(--surface-raised);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--r-input);
+  padding: 5px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  outline: none;
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+}
+.corr-value-input:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255,69,58,0.15);
+}
+.corr-value-input.has-value { border-color: rgba(255,69,58,0.6); color: var(--danger); }
+.corr-match-count {
+  font-size: 11px;
+  color: var(--magenta);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.found-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: var(--r-badge);
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.found-body   { background: rgba(48,209,88,0.15);  color: var(--success); }
+.found-header { background: rgba(255,214,10,0.15); color: var(--warning); }
+.found-url    { background: rgba(10,132,255,0.15); color: var(--info); }
+
+.captured-value {
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 10px;
+  color: #E2A04F;
+  background: rgba(226,160,79,0.08);
+  border: 1px solid rgba(226,160,79,0.22);
+  padding: 2px 7px;
+  border-radius: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  cursor: default;
+  vertical-align: middle;
+}
+
+.boundary-code {
+  font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  padding: 1px 5px;
+  border-radius: 4px;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* -----------------------------------------------------------------------
+   TOAST NOTIFICATIONS
+   ----------------------------------------------------------------------- */
+.toast-container {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  padding: 11px 16px;
+  border-radius: var(--r-card);
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: toastSlideIn 0.25s var(--ease);
+  max-width: 340px;
+}
+.toast.success { border-color: rgba(48,209,88,0.5); }
+.toast.warning { border-color: rgba(255,214,10,0.5); }
+.toast.error   { border-color: rgba(255,69,58,0.5); }
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(18px) translateY(8px); }
+  to   { opacity: 1; transform: translateX(0) translateY(0); }
+}
+
+/* -----------------------------------------------------------------------
+   MISC
+   ----------------------------------------------------------------------- */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2px 0;
+}
+
+/* Method badge in excluded list */
+.method-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: var(--r-badge);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- =====================================================================
+     HEADER
+     ===================================================================== -->
+<div class="header">
+  <div class="header-logo">LR</div>
+  <div>
+    <div class="header-title">THANUSH FidGen</div>
+  </div>
+  <div class="header-version-pill">v15</div>
+</div>
+
+<!-- =====================================================================
+     MAIN LAYOUT
+     ===================================================================== -->
+<div class="main-layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Clear Session -->
+    <button class="btn-clear-session" id="btnClearSession">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      CLEAR CURRENT SESSION
+    </button>
+
+    <!-- Upload -->
+    <div>
+      <div class="section-label">SAZ File</div>
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="6" y="4" width="20" height="26" rx="3" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M26 4l8 8v22a3 3 0 01-3 3H11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M26 4v8h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 22v-8m0 0l-3 3m3-3l3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="upload-text"><strong>Drop SAZ file here</strong></div>
+        <div class="upload-subtext">or click to browse &middot; .saz files only</div>
+        <div class="upload-filename" id="uploadFilename" style="display:none;"></div>
+      </div>
+      <input type="file" id="fileInput" accept=".saz">
+      <div class="progress-bar-wrap" id="progressWrap">
+        <div class="progress-bar-inner" id="progressBar"></div>
+      </div>
+      <div class="error-banner" id="errorBanner"></div>
+    </div>
+
+    <!-- Script Settings -->
+    <div>
+      <div class="section-label">Script Settings</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Script Name</label>
+          <input type="text" class="form-input" id="scriptName" value="WebScript" placeholder="WebScript">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Default Think Time (sec)</label>
+          <input type="number" class="form-input" id="thinkTime" value="2" min="0" step="0.5">
+        </div>
+      </div>
+    </div>
+
+    <!-- Options -->
+    <div>
+      <div class="section-label">Options</div>
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="optHeaders" checked>
+          <div>
+            <div>Include web_add_header() calls</div>
+            <div class="checkbox-desc">Adds custom request headers</div>
+          </div>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="optThinkTime" checked>
+          <div>
+            <div>Include lr_think_time() calls</div>
+            <div class="checkbox-desc">Simulates user think time</div>
+          </div>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="optTransactions" checked>
+          <div>
+            <div>Wrap in transactions</div>
+            <div class="checkbox-desc">lr_start/end_transaction()</div>
+          </div>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="optSkipStatic">
+          <div>
+            <div>Skip static resources</div>
+            <div class="checkbox-desc">Exclude .js/.css/.png/etc</div>
+          </div>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="optCorrelate" checked>
+          <div>
+            <div>Auto-correlate dynamic values</div>
+            <div class="checkbox-desc">Insert web_reg_save_param()</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-primary" id="btnGenerate" disabled>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M4 2l10 6-10 6V2z" fill="currentColor"/>
+        </svg>
+        Generate Script
+        <span style="font-size:10px;opacity:0.65;font-weight:400;">(Ctrl+G)</span>
+      </button>
+      <div class="generate-hint" id="generateHint">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M8 1v10m0 0l-3-3m3 3l3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Sample loaded — click Generate Script to continue!
+      </div>
+      <button class="btn btn-secondary" id="btnDownload" disabled>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M8 2v9m0 0l-3-3m3 3l3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 12h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        Download ZIP
+        <span style="font-size:10px;opacity:0.65;font-weight:400;">(Ctrl+D)</span>
+      </button>
+    </div>
+
+    <!-- Statistics -->
+    <div>
+      <div class="section-label">Statistics</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statRequests">0</div>
+          <div class="stat-label">Requests</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statTransactions">0</div>
+          <div class="stat-label">Transactions</div>
+        </div>
+        <div class="stat-card stat-full">
+          <div class="stat-value" id="statLines">0</div>
+          <div class="stat-label">Script Lines</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <div class="resize-handle" id="resizeHandleLM"></div>
+
+  <!-- MIDDLE PANEL -->
+  <div class="middle-panel">
+
+    <div class="panel-header">
+      <div class="panel-title">Parsed Sessions</div>
+      <div class="count-badge" id="sessionCountBadge">0</div>
+    </div>
+
+    <!-- Select all -->
+    <div class="select-all-row" id="selectAllRow" style="display:none;">
+      <label>
+        <input type="checkbox" id="selectAllChk" checked>
+        Select all requests
+      </label>
+      <div class="selected-count"><span id="selectedCount">0</span> selected</div>
+    </div>
+
+    <!-- URL filter bar -->
+    <div class="filter-bar" id="filterBar" style="display:none;">
+      <input type="text" class="filter-input" id="filterInput" placeholder="Filter URLs to exclude (e.g. google.com, analytics)...">
+      <span class="filter-match-count" id="filterMatchCount" style="display:none;"></span>
+      <button class="btn-amber" id="btnExclude">Exclude Matching</button>
+      <button class="btn-clear" id="btnClearFilter" title="Clear filter">&#10005;</button>
+    </div>
+
+    <!-- Status code filter bar -->
+    <div class="status-filter-bar" id="statusFilterBar" style="display:none;">
+      <span class="status-filter-label">Status Code:</span>
+      <input type="text" class="status-filter-input" id="statusFilterInput" placeholder="e.g. 500" maxlength="3" autocomplete="off">
+      <span class="filter-match-count" id="statusFilterMatchCount" style="display:none;"></span>
+      <button class="btn-amber" id="btnExcludeStatus">Exclude Matching</button>
+      <button class="btn-clear" id="btnClearStatusFilter" title="Clear status filter">&#10005;</button>
+    </div>
+
+    <!-- Method filter bar -->
+    <div class="method-filter-bar" id="methodFilterBar" style="display:none;">
+      <span class="method-filter-label">Method:</span>
+      <select class="method-filter-select" id="methodFilterSelect">
+        <option value="">All Methods</option>
+      </select>
+      <span class="method-match-count" id="methodMatchCount" style="display:none;"></span>
+      <button class="btn-amber" id="btnExcludeMethod">Exclude Matching</button>
+      <button class="btn-clear" id="btnClearMethodFilter" title="Reset method filter">&#10005;</button>
+    </div>
+
+    <!-- Excluded sessions panel -->
+    <div id="excludedPanel" style="display:none; flex-direction:column; flex-shrink:0;">
+      <div class="excluded-panel-header" id="excludedPanelHeader">
+        <span id="excludedToggleIcon" style="font-size:10px; color:var(--text-muted);">&#9654;</span>
+        <span style="font-size:11px; font-weight:500; color:var(--text-secondary);">Excluded Sessions</span>
+        <span class="count-badge" id="excludedCountBadge" style="background:rgba(255,69,58,0.10);border-color:rgba(255,69,58,0.28);color:var(--danger);">0</span>
+        <span style="margin-left:auto; font-size:10px; color:var(--text-muted);" id="excludedPanelHint">click to expand</span>
+      </div>
+      <div class="excluded-list" id="excludedList" style="display:none;"></div>
+    </div>
+
+    <!-- Sessions table -->
+    <div class="sessions-scroll" id="sessionsScroll">
+      <div class="empty-state" id="sessionsEmptyState">
+        <div class="empty-icon">&#128196;</div>
+        <div class="empty-title">No SAZ file loaded</div>
+        <div class="empty-desc">Upload a Fiddler .saz capture to get started</div>
+      </div>
+      <table class="sessions-table" id="sessionsTable" style="display:none;">
+        <thead>
+          <tr>
+            <th style="width:32px;"></th>
+            <th style="width:36px;">#</th>
+            <th style="width:64px;">Method</th>
+            <th>URL</th>
+            <th style="width:64px;">Status</th>
+            <th style="width:70px;">Size</th>
+          </tr>
+        </thead>
+        <tbody id="sessionsBody"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /middle-panel -->
+
+  <div class="resize-handle" id="resizeHandleMR"></div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- Tab bar -->
+    <div class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-tab="action">Action.c</button>
+      <button class="tab-btn" data-tab="vuser_init">vuser_init.c</button>
+      <button class="tab-btn" data-tab="vuser_end">vuser_end.c</button>
+      <button class="tab-btn" data-tab="globals">globals.h</button>
+      <button class="tab-btn" data-tab="config">default.cfg</button>
+      <button class="tab-btn" data-tab="correlations">
+        Correlations
+        <span class="tab-badge" id="corrBadge" style="display:none;">0</span>
+      </button>
+      <div style="margin-left:auto;display:flex;align-items:center;padding:0 10px;">
+        <button id="btnCopy" title="Copy current tab to clipboard"
+          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text-secondary);padding:5px 11px;font-size:11px;border-radius:var(--r-pill);cursor:pointer;transition:all var(--duration) var(--ease);display:flex;align-items:center;gap:5px;font-family:inherit;font-weight:500;">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;" aria-hidden="true">
+            <rect x="5" y="5" width="9" height="10" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M3 11H2.5A1.5 1.5 0 0 1 1 9.5v-7A1.5 1.5 0 0 1 2.5 1h7A1.5 1.5 0 0 1 11 2.5V3" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+          <span id="btnCopyLabel">Copy</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Header filter bar (Action.c only) -->
+    <div class="header-filter-bar" id="headerFilterBar" style="display:none;">
+      <span class="header-filter-label">Header:</span>
+      <input type="text" class="header-filter-input" id="headerFilterInput" placeholder="e.g. user-agent, accept" autocomplete="off">
+      <span class="filter-match-count" id="headerFilterMatchCount" style="display:none;"></span>
+      <button class="btn-amber" id="btnRemoveHeader">Remove All</button>
+      <button class="btn-clear" id="btnClearHeaderFilter" title="Clear">&#10005;</button>
+    </div>
+
+    <!-- Find & Replace bar (Action.c only) -->
+    <div class="find-replace-bar" id="findReplaceBar" style="display:none;">
+      <span class="find-replace-label">Find &amp; Replace:</span>
+      <input type="text" class="find-replace-input" id="findInput" placeholder="Find text..." autocomplete="off">
+      <input type="text" class="find-replace-input" id="replaceInput" placeholder="Replace with..." autocomplete="off">
+      <span class="filter-match-count" id="findMatchCount" style="display:none;"></span>
+      <button class="btn-amber" id="btnReplaceAll">Replace All</button>
+      <button class="btn-clear" id="btnClearFindReplace" title="Clear">&#10005;</button>
+    </div>
+
+    <!-- Removed headers chip list -->
+    <div class="removed-headers-list" id="removedHeadersList" style="display:none;"></div>
+
+    <!-- Code panel -->
+    <div class="code-panel">
+      <div class="code-scroll" id="codeScroll">
+        <div class="empty-state" id="codeEmptyState">
+          <div class="empty-icon">&#128196;</div>
+          <div class="empty-title">No script generated yet</div>
+          <div class="empty-desc">Configure settings and click Generate Script</div>
+        </div>
+        <pre id="codePre" style="display:none;"><code id="codeBlock" class="language-c"></code></pre>
+      </div>
+      <div class="corr-panel" id="corrPanel" style="display:none;overflow:auto;flex:1;"></div>
+    </div>
+
+  </div><!-- /right-panel -->
+
+</div><!-- /main-layout -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// =====================================================================
+// CONSTANTS
+// =====================================================================
+// Only exclude headers that VuGen auto-manages or that would break the script.
+// All other headers (accept, accept-language, user-agent, authorization,
+// content-type, cache-control, origin, sec-*, x-*, etc.) are included.
+const EXCLUDED_HEADERS = new Set([
+  'host',              // derived from URL automatically
+  'content-length',    // calculated by VuGen at runtime
+  'transfer-encoding', // HTTP transport-level
+  'connection',        // HTTP transport-level
+  'proxy-connection',  // proxy infrastructure
+  'accept-encoding',   // VuGen handles compression via AcceptGzip setting
+  'cookie',            // handled via correlation parameters
+  'referer'            // already emitted as Referer= inside web_url/web_custom_request
+]);
+
+const STATIC_EXTENSIONS = /\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|map|webp|bmp)(\?.*)?$/i;
+
+// =====================================================================
+// STATE
+// =====================================================================
+let parsedSessions = [];
+let generatedFiles = {};
+let activeTab = 'action';
+let correlationRules = [];
+let manualCorrelationRules = []; // { id, paramName, value }
+let manualCorrIdCounter = 0;
+let baseActionC = null;       // original Action.c before header removals
+let removedHeaders = [];      // [{name, count}] — headers removed from Action.c
+
+// =====================================================================
+// UTILITIES
+// =====================================================================
+function escapeC(str) {
+  if (!str) return '';
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r\n/g, '\\n')
+    .replace(/\n/g, '\\n')
+    .replace(/\t/g, '\\t');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatBytes(n) {
+  n = parseInt(n) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+
+function slugify(str) {
+  return (str || '').replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '') || 'step';
+}
+
+// Returns a meaningful step name for use as first arg of web_url() / web_custom_request()
+// Priority: (1) last meaningful path segment  (2) post-/v1/ segment  (3) hostname
+function getStepName(url) {
+  // Returns true when a path segment looks like a non-descriptive ID or token
+  function isIdSegment(seg) {
+    if (!seg || seg.length === 0) return true;
+    if (/^v\d+$/i.test(seg)) return true;                              // API version: v1, v2, v3
+    if (/^\d+$/.test(seg)) return true;                                // pure numeric: 12345
+    if (/^[\d-]+$/.test(seg)) return true;                             // digits+hyphens only: 123-456
+    if (/^[0-9a-f]{16,}$/i.test(seg)) return true;                    // 16+ hex chars (hash/token)
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seg)) return true; // UUID
+    return false;
+  }
+
+  // 1st priority: last meaningful path segment
+  try {
+    const segments = new URL(url).pathname.split('/').filter(Boolean);
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const seg = segments[i].split('.')[0]; // strip file extension (e.g. .json, .xml)
+      if (!isIdSegment(seg)) return seg.substring(0, 30);
+    }
+  } catch (e) { /* malformed URL — fall through */ }
+
+  // 2nd priority (existing logic): segment immediately after /v1/
+  const v1Match = (url || '').match(/\/v1\/([^/?#\s]+)/i);
+  if (v1Match) return v1Match[1];
+
+  // 3rd priority: hostname fallback
+  try {
+    return new URL(url).hostname || url;
+  } catch (e) {
+    const m = (url || '').match(/^https?:\/\/([^/?#\s]+)/i);
+    return m ? m[1] : (url || 'step');
+  }
+}
+
+function getPathSegment(url) {
+  try {
+    let u = url;
+    // strip query string
+    let qIdx = u.indexOf('?');
+    if (qIdx >= 0) u = u.substring(0, qIdx);
+    // get last segment
+    let parts = u.split('/').filter(Boolean);
+    let last = parts[parts.length - 1] || 'root';
+    return slugify(last).substring(0, 30);
+  } catch (e) {
+    return 'step';
+  }
+}
+
+function replaceAll(str, search, replacement) {
+  if (!str || !search) return str || '';
+  return str.split(search).join(replacement);
+}
+
+function getStatusClass(status) {
+  const s = parseInt(status);
+  if (s >= 200 && s < 300) return 'badge-2xx';
+  if (s >= 300 && s < 400) return 'badge-3xx';
+  if (s >= 400 && s < 500) return 'badge-4xx';
+  if (s >= 500) return 'badge-5xx';
+  return 'badge-other';
+}
+
+function getMethodClass(method) {
+  const m = (method || '').toUpperCase();
+  if (m === 'GET') return 'badge-get';
+  if (m === 'POST') return 'badge-post';
+  if (m === 'PUT') return 'badge-put';
+  if (m === 'DELETE') return 'badge-delete';
+  if (m === 'PATCH') return 'badge-patch';
+  return 'badge-other';
+}
+
+function padNum(n, len) {
+  return String(n).padStart(len, '0');
+}
+
+// =====================================================================
+// SAZ PARSING
+// =====================================================================
+function parseRawRequest(rawText) {
+  // Normalize line endings
+  let text = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  let lines = text.split('\n');
+
+  // First line: METHOD URL HTTP/x.x
+  let method = 'GET';
+  let url = '';
+  if (lines[0]) {
+    let parts = lines[0].trim().split(' ');
+    method = parts[0] || 'GET';
+    url = parts[1] || '';
+  }
+
+  // Headers until blank line
+  let headers = {};
+  let bodyStart = 1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '') {
+      bodyStart = i + 1;
+      break;
+    }
+    let colonIdx = lines[i].indexOf(':');
+    if (colonIdx > 0) {
+      let k = lines[i].substring(0, colonIdx).trim().toLowerCase();
+      let v = lines[i].substring(colonIdx + 1).trim();
+      headers[k] = v;
+    }
+  }
+
+  // Body
+  let body = lines.slice(bodyStart).join('\n').trim();
+
+  // If URL is relative, prefix with host
+  if (url && url.startsWith('/')) {
+    let host = headers['host'] || 'localhost';
+    url = 'https://' + host + url;
+  }
+
+  return { method, url, headers, body };
+}
+
+function parseRawResponse(rawText) {
+  let text = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  let lines = text.split('\n');
+
+  // Status line
+  let status = 200;
+  let statusText = 'OK';
+  if (lines[0]) {
+    let parts = lines[0].trim().split(' ');
+    status = parseInt(parts[1]) || 200;
+    statusText = parts.slice(2).join(' ') || 'OK';
+  }
+
+  // Response headers until blank line
+  let resHeaders = {};
+  let bodyStart = 1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '') {
+      bodyStart = i + 1;
+      break;
+    }
+    let colonIdx = lines[i].indexOf(':');
+    if (colonIdx > 0) {
+      let k = lines[i].substring(0, colonIdx).trim().toLowerCase();
+      let v = lines[i].substring(colonIdx + 1).trim();
+      // Set-Cookie can appear multiple times; accumulate
+      if (k === 'set-cookie') {
+        if (!resHeaders['set-cookie']) resHeaders['set-cookie'] = [];
+        resHeaders['set-cookie'].push(v);
+      } else {
+        resHeaders[k] = v;
+      }
+    }
+  }
+
+  // Response body
+  let resBody = lines.slice(bodyStart).join('\n');
+
+  return { status, statusText, headers: resHeaders, body: resBody };
+}
+
+async function parseSAZ(file) {
+  const zip = new JSZip();
+  const content = await zip.loadAsync(file);
+
+  // Find all N_c.txt / N_s.txt pairs in raw/
+  const sessionMap = {};
+  for (const [path, zipEntry] of Object.entries(content.files)) {
+    const match = path.match(/^raw\/(\d+)_([cs])\.txt$/i);
+    if (match) {
+      const num = parseInt(match[1]);
+      const type = match[2].toLowerCase();
+      if (!sessionMap[num]) sessionMap[num] = {};
+      sessionMap[num][type] = zipEntry;
+    }
+  }
+
+  const nums = Object.keys(sessionMap).map(Number).sort((a, b) => a - b);
+  const sessions = [];
+
+  for (const num of nums) {
+    const pair = sessionMap[num];
+    if (!pair.c || !pair.s) continue;
+
+    const [reqText, resText] = await Promise.all([
+      pair.c.async('string'),
+      pair.s.async('string')
+    ]);
+
+    const req = parseRawRequest(reqText);
+    const res = parseRawResponse(resText);
+
+    sessions.push({
+      num,
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      body: req.body,
+      status: res.status,
+      statusText: res.statusText,
+      resHeaders: res.headers,
+      resBody: res.body,
+      bodySize: req.body ? req.body.length : 0,
+      included: true
+    });
+  }
+
+  return sessions;
+}
+
+// =====================================================================
+// CORRELATION ENGINE
+// =====================================================================
+function extractDynamicValues(resBody, resHeaders) {
+  const candidates = [];
+
+  // From resBody — JSON string fields
+  if (resBody) {
+    const jsonStrRx = /"([a-zA-Z_][a-zA-Z0-9_-]*)"\s*:\s*"([^"\\]{8,4096})"/g;
+    let m;
+    while ((m = jsonStrRx.exec(resBody)) !== null) {
+      const key = m[1];
+      const val = m[2];
+      candidates.push({
+        nameBase: key,
+        value: val,
+        lb: '"' + key + '":"',
+        rb: '"',
+        search: 'Body',
+        sourceType: 'JSON field'
+      });
+    }
+
+    // From resBody — HTML hidden inputs
+    const tagRx = /<input[^>]+>/gi;
+    let tagMatch;
+    while ((tagMatch = tagRx.exec(resBody)) !== null) {
+      const tagStr = tagMatch[0];
+      const typeMatch = /\btype\s*=\s*["']?hidden["']?/i.test(tagStr);
+      if (!typeMatch) continue;
+
+      const nameMatch = /\bname\s*=\s*["']([^"']+)["']/i.exec(tagStr);
+      const valueMatch = /\bvalue\s*=\s*["']([^"']{8,500})["']/i.exec(tagStr);
+      if (nameMatch && valueMatch) {
+        const fieldName = nameMatch[1];
+        const fieldVal = valueMatch[1];
+        candidates.push({
+          nameBase: fieldName,
+          value: fieldVal,
+          lb: 'name="' + fieldName + '" value="',
+          rb: '"',
+          search: 'Body',
+          sourceType: 'HTML hidden field'
+        });
+      }
+    }
+
+    // From resBody — CSRF meta tags
+    const csrfRx = /<meta[^>]+name=["']([^"']*(?:csrf|token|xsrf)[^"']*)["'][^>]*content=["']([^"']{8,500})["']/gi;
+    let csrfMatch;
+    while ((csrfMatch = csrfRx.exec(resBody)) !== null) {
+      const metaName = csrfMatch[1];
+      const content = csrfMatch[2];
+      candidates.push({
+        nameBase: metaName,
+        value: content,
+        lb: 'name="' + metaName + '" content="',
+        rb: '"',
+        search: 'Body',
+        sourceType: 'CSRF meta'
+      });
+    }
+  }
+
+  // From resHeaders — Set-Cookie
+  if (resHeaders) {
+    const cookies = resHeaders['set-cookie'];
+    const cookieList = Array.isArray(cookies) ? cookies : (cookies ? [cookies] : []);
+    for (const cookieStr of cookieList) {
+      // Parse name=value from cookie string
+      const parts = cookieStr.split(';');
+      const mainPart = parts[0];
+      const eqIdx = mainPart.indexOf('=');
+      if (eqIdx > 0) {
+        const cookieName = mainPart.substring(0, eqIdx).trim();
+        const cookieVal = mainPart.substring(eqIdx + 1).trim();
+        if (cookieVal.length >= 8) {
+          candidates.push({
+            nameBase: cookieName,
+            value: cookieVal,
+            lb: cookieName + '=',
+            rb: ';',
+            search: 'Headers',
+            sourceType: 'Cookie'
+          });
+        }
+      }
+    }
+
+    // From resHeaders — auth/token headers (including authorization with Bearer prefix stripping)
+    const authHeaders = [
+      'authorization','x-authorization',
+      'x-auth-token','x-access-token','x-csrf-token','x-xsrf-token',
+      'x-request-token','x-api-key'
+    ];
+    for (const hdr of authHeaders) {
+      let hv = resHeaders[hdr];
+      if (!hv || typeof hv !== 'string') continue;
+      // Strip Bearer / Token prefix so only the raw token value is captured;
+      // left boundary is adjusted to include the prefix for accurate extraction
+      const bearerMatch = /^(Bearer|Token)\s+(.+)$/i.exec(hv);
+      const lb = bearerMatch
+        ? hdr + ': ' + bearerMatch[1] + ' '
+        : hdr + ': ';
+      if (bearerMatch) hv = bearerMatch[2];
+      if (hv.length >= 8) {
+        candidates.push({
+          nameBase: hdr.replace(/-/g, '_'),
+          value: hv,
+          lb,
+          rb: '\r\n',
+          search: 'Headers',
+          sourceType: 'Response header'
+        });
+      }
+    }
+  }
+
+  return candidates;
+}
+
+function detectCorrelations(sessions) {
+  const rules = [];
+  const usedNames = new Set();
+
+  function toPascalCase(str) {
+    // split on non-alphanumeric, capitalize each word
+    return str
+      .split(/[^a-zA-Z0-9]+/)
+      .filter(Boolean)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join('');
+  }
+
+  function makeParamName(base) {
+    const pascal = toPascalCase(base);
+    let name = 'C_' + pascal;
+    if (!usedNames.has(name)) {
+      usedNames.add(name);
+      return name;
+    }
+    let i = 2;
+    while (usedNames.has(name + i)) i++;
+    const final = name + i;
+    usedNames.add(final);
+    return final;
+  }
+
+  for (let srcIdx = 0; srcIdx < sessions.length - 1; srcIdx++) {
+    const src = sessions[srcIdx];
+    const candidates = extractDynamicValues(src.resBody || '', src.resHeaders || {});
+
+    for (const candidate of candidates) {
+      if (!candidate.value || candidate.value.length < 8) continue;
+
+      for (let tgtIdx = srcIdx + 1; tgtIdx < sessions.length; tgtIdx++) {
+        const tgt = sessions[tgtIdx];
+        let foundIn = null;
+        let headerKey = '';
+
+        // Check URL
+        if (tgt.url && tgt.url.includes(candidate.value)) {
+          foundIn = 'url';
+        }
+
+        // Check body
+        if (!foundIn && tgt.body) {
+          if (tgt.body.includes(candidate.value)) {
+            foundIn = 'body';
+          }
+          // Try URL-decoded body
+          if (!foundIn) {
+            try {
+              const decoded = decodeURIComponent(tgt.body.replace(/\+/g, ' '));
+              if (decoded.includes(candidate.value)) {
+                foundIn = 'body';
+              }
+            } catch (e) { /* ignore */ }
+          }
+        }
+
+        // Check headers
+        if (!foundIn && tgt.headers) {
+          for (const [hk, hv] of Object.entries(tgt.headers)) {
+            if (typeof hv === 'string' && hv.includes(candidate.value)) {
+              foundIn = 'header';
+              headerKey = hk;
+              break;
+            }
+          }
+        }
+
+        if (foundIn) {
+          // Check for duplicate (same value + same targetIdx)
+          const isDuplicate = rules.some(r =>
+            r.value === candidate.value && r.targetSessionIdx === tgtIdx
+          );
+          if (!isDuplicate) {
+            rules.push({
+              enabled: true,
+              paramName: makeParamName(candidate.nameBase),
+              value: candidate.value,
+              lb: candidate.lb,
+              rb: candidate.rb,
+              search: candidate.search,
+              sourceType: candidate.sourceType,
+              sourceSessionIdx: srcIdx,
+              sourceSessionNum: src.num,
+              targetSessionIdx: tgtIdx,
+              targetSessionNum: tgt.num,
+              foundIn,
+              headerKey
+            });
+          }
+          break; // only first occurrence per source->value
+        }
+      }
+    }
+  }
+
+  // =========================================================================
+  // FALLBACK: Auth-header token detection
+  // Runs when the login/OAuth endpoint is NOT in the SAZ capture, so the token
+  // never appears in any response body or header above.
+  // Places web_reg_save_param BEFORE the first request that uses the token so
+  // the user only needs to add their login call before that point in the script.
+  // lb/rb follow the standard OAuth JSON response format: {"access_token":"<jwt>",…}
+  // =========================================================================
+  {
+    const detectedValues = new Set(rules.map(r => r.value));
+    const fallbackHdrs = ['authorization', 'x-authorization'];
+
+    for (const hdr of fallbackHdrs) {
+      const firstUse = new Map(); // tokenValue → { idx, num }
+      for (let i = 0; i < sessions.length; i++) {
+        const s = sessions[i];
+        const hv = s.headers && s.headers[hdr];
+        if (!hv || typeof hv !== 'string') continue;
+        const bm = /^(Bearer|Token)\s+(.+)$/i.exec(hv);
+        const tokenVal = bm ? bm[2] : hv.trim();
+        if (tokenVal.length >= 8 && !detectedValues.has(tokenVal) && !firstUse.has(tokenVal)) {
+          firstUse.set(tokenVal, { idx: i, num: s.num });
+        }
+      }
+
+      for (const [tokenVal, { idx, num }] of firstUse.entries()) {
+        rules.push({
+          enabled: true,
+          paramName: makeParamName(hdr.replace(/-/g, '_')),
+          value: tokenVal,
+          lb: '"access_token":"',
+          rb: '",',
+          search: 'Body',
+          sourceType: hdr === 'authorization' ? 'Auth Bearer token' : 'Auth token',
+          sourceSessionIdx: idx,
+          sourceSessionNum: num,
+          targetSessionIdx: idx,
+          targetSessionNum: num,
+          foundIn: 'header',
+          headerKey: hdr
+        });
+        detectedValues.add(tokenVal);
+      }
+    }
+  }
+
+  return rules;
+}
+
+// =====================================================================
+// SCRIPT GENERATION
+// =====================================================================
+function generateVuGenScript(sessions, scriptName, options) {
+  const thinkTimeDefault = parseFloat(document.getElementById('thinkTime').value) || 2;
+  const includedSessions = sessions.filter(s => s.included);
+
+  // Build correlation maps
+  const activeRules = options.correlate ? correlationRules.filter(r => r.enabled) : [];
+  const sourceRuleMap = {};
+  const targetRuleMap = {};
+
+  for (const rule of activeRules) {
+    if (!sourceRuleMap[rule.sourceSessionIdx]) sourceRuleMap[rule.sourceSessionIdx] = [];
+    sourceRuleMap[rule.sourceSessionIdx].push(rule);
+    if (!targetRuleMap[rule.targetSessionIdx]) targetRuleMap[rule.targetSessionIdx] = [];
+    targetRuleMap[rule.targetSessionIdx].push(rule);
+  }
+
+  const actionLines = [];
+  const thinkTimes = [];
+
+  // Header
+  actionLines.push('#include "web_api.h"');
+  actionLines.push('');
+  actionLines.push('Action()');
+  actionLines.push('{');
+
+  for (let idx = 0; idx < includedSessions.length; idx++) {
+    const session = includedSessions[idx];
+    const stepNum = padNum(idx + 1, 2);
+    const pathName = getPathSegment(session.url);
+    const transName = 'T' + stepNum + '_' + pathName;  // used for lr_start/end_transaction
+    const stepName = getStepName(session.url);          // used as web function step name
+    const snapshot = 't' + padNum(idx + 1, 3);
+
+    const sessionIndex = parsedSessions.indexOf(session);
+    const sourceRules = sourceRuleMap[sessionIndex] || [];
+    const targetRules = targetRuleMap[sessionIndex] || [];
+
+    // Build resolved request (apply correlation replacements)
+    let sessUrl = session.url;
+    let sessBody = session.body || '';
+    let sessHeaders = Object.assign({}, session.headers);
+
+    // Apply all active correlation rules to every session (not just the designated
+    // target session) so tokens used across multiple requests are all replaced.
+    for (const rule of activeRules) {
+      const ph = '{' + rule.paramName + '}';
+      sessUrl = replaceAll(sessUrl, rule.value, ph);
+      sessBody = replaceAll(sessBody, rule.value, ph);
+      // URL-encoded value replacement (percent-encoded and plus-encoded)
+      try {
+        const enc = encodeURIComponent(rule.value);
+        if (enc !== rule.value) {
+          sessBody = replaceAll(sessBody, enc, ph);
+          sessUrl = replaceAll(sessUrl, enc, ph);
+        }
+        const plusEnc = rule.value.replace(/ /g, '+');
+        if (plusEnc !== rule.value) {
+          sessBody = replaceAll(sessBody, plusEnc, ph);
+          sessUrl  = replaceAll(sessUrl,  plusEnc, ph);
+        }
+      } catch (e) { /* ignore */ }
+      // Headers
+      for (const hk of Object.keys(sessHeaders)) {
+        if (typeof sessHeaders[hk] === 'string' && sessHeaders[hk].includes(rule.value)) {
+          sessHeaders[hk] = replaceAll(sessHeaders[hk], rule.value, ph);
+        }
+      }
+    }
+
+    // Apply manual correlation overrides (user-entered param name + value)
+    for (const mr of manualCorrelationRules) {
+      if (!mr.paramName || !mr.value) continue;
+      const mph = '{' + mr.paramName + '}';
+      sessUrl  = replaceAll(sessUrl,  mr.value, mph);
+      sessBody = replaceAll(sessBody, mr.value, mph);
+      try {
+        const enc = encodeURIComponent(mr.value);
+        if (enc !== mr.value) {
+          sessBody = replaceAll(sessBody, enc, mph);
+          sessUrl  = replaceAll(sessUrl,  enc, mph);
+        }
+        const plusEnc = mr.value.replace(/ /g, '+');
+        if (plusEnc !== mr.value) {
+          sessBody = replaceAll(sessBody, plusEnc, mph);
+          sessUrl  = replaceAll(sessUrl,  plusEnc, mph);
+        }
+      } catch(e) {}
+      for (const hk of Object.keys(sessHeaders)) {
+        if (typeof sessHeaders[hk] === 'string' && sessHeaders[hk].includes(mr.value)) {
+          sessHeaders[hk] = replaceAll(sessHeaders[hk], mr.value, mph);
+        }
+      }
+    }
+
+    // Blank line between steps
+    if (idx > 0) actionLines.push('');
+
+    // web_reg_save_param — BEFORE the request
+    for (const sourceRule of sourceRules) {
+      actionLines.push('    // Correlation: capture {' + sourceRule.paramName + '} from response (' + sourceRule.sourceType + ')');
+      actionLines.push('    web_reg_save_param("' + sourceRule.paramName + '", "LB=' + escapeC(sourceRule.lb) + '", "RB=' + escapeC(sourceRule.rb) + '", LAST);');
+      actionLines.push('');
+    }
+
+    // Think time (between steps, not before the first)
+    if (options.thinkTime && idx > 0) {
+      actionLines.push('    lr_think_time(' + thinkTimeDefault + ');');
+      actionLines.push('');
+    }
+
+    thinkTimes.push({ name: transName, value: thinkTimeDefault });
+
+    // Transaction start
+    if (options.transactions) {
+      actionLines.push('    lr_start_transaction("' + transName + '");');
+    }
+
+    // Headers
+    if (options.headers) {
+      for (const [k, v] of Object.entries(sessHeaders)) {
+        if (!EXCLUDED_HEADERS.has(k.toLowerCase())) {
+          actionLines.push('    web_add_header("' + escapeC(k) + '", "' + escapeC(v) + '");');
+        }
+      }
+    }
+
+    const referer = sessHeaders['referer'] || '';
+    const contentType = (sessHeaders['content-type'] || '').toLowerCase();
+    const method = session.method.toUpperCase();
+
+    // Request function
+    if (method === 'GET') {
+      actionLines.push('    web_url("' + escapeC(stepName) + '",');
+      actionLines.push('        "URL=' + escapeC(sessUrl) + '",');
+      actionLines.push('        "TargetFrame=",');
+      actionLines.push('        "Resource=0",');
+      actionLines.push('        "RecContentType=text/html",');
+      actionLines.push('        "Referer=' + escapeC(referer) + '",');
+      actionLines.push('        "Snapshot=' + snapshot + '.inf",');
+      actionLines.push('        "Mode=HTML",');
+      actionLines.push('        LAST);');
+    } else if (method === 'POST' && contentType.includes('application/x-www-form-urlencoded')) {
+      // Parse form body
+      actionLines.push('    web_submit_data("' + escapeC(stepName) + '",');
+      actionLines.push('        "Action=' + escapeC(sessUrl) + '",');
+      actionLines.push('        "Method=POST",');
+      actionLines.push('        "TargetFrame=",');
+      actionLines.push('        "Referer=' + escapeC(referer) + '",');
+      actionLines.push('        "Snapshot=' + snapshot + '.inf",');
+      actionLines.push('        "Mode=HTML",');
+      actionLines.push('        ITEMDATA,');
+      if (sessBody) {
+        const pairs = sessBody.split('&');
+        for (const pair of pairs) {
+          const eqIdx = pair.indexOf('=');
+          const pName = eqIdx >= 0 ? pair.substring(0, eqIdx) : pair;
+          const pVal = eqIdx >= 0 ? pair.substring(eqIdx + 1) : '';
+          let decodedName = pName;
+          let decodedVal = pVal;
+          try { decodedName = decodeURIComponent(pName.replace(/\+/g, ' ')); } catch (e) {}
+          try { decodedVal = decodeURIComponent(pVal.replace(/\+/g, ' ')); } catch (e) {}
+          actionLines.push('        "Name=' + escapeC(decodedName) + '", "Value=' + escapeC(decodedVal) + '", ENDITEM,');
+        }
+      }
+      actionLines.push('        LAST);');
+    } else if (method === 'POST' && contentType.includes('multipart/form-data')) {
+      actionLines.push('    web_custom_request("' + escapeC(stepName) + '",');
+      actionLines.push('        "URL=' + escapeC(sessUrl) + '",');
+      actionLines.push('        "Method=POST",');
+      actionLines.push('        "TargetFrame=",');
+      actionLines.push('        "EncType=multipart/form-data",');
+      actionLines.push('        "Referer=' + escapeC(referer) + '",');
+      actionLines.push('        "Snapshot=' + snapshot + '.inf",');
+      actionLines.push('        "Body=' + escapeC(sessBody) + '",');
+      actionLines.push('        LAST);');
+    } else {
+      // POST+JSON, PUT, DELETE, PATCH, etc.
+      let encType = '';
+      if (contentType.includes('application/json')) encType = 'application/json';
+      else if (contentType) encType = contentType.split(';')[0].trim();
+      actionLines.push('    web_custom_request("' + escapeC(stepName) + '",');
+      actionLines.push('        "URL=' + escapeC(sessUrl) + '",');
+      actionLines.push('        "Method=' + method + '",');
+      actionLines.push('        "TargetFrame=",');
+      if (encType) actionLines.push('        "EncType=' + escapeC(encType) + '",');
+      actionLines.push('        "Referer=' + escapeC(referer) + '",');
+      actionLines.push('        "Snapshot=' + snapshot + '.inf",');
+      if (sessBody) {
+        actionLines.push('        "Body=' + escapeC(sessBody) + '",');
+      }
+      actionLines.push('        LAST);');
+    }
+
+    // Transaction end
+    if (options.transactions) {
+      actionLines.push('    lr_end_transaction("' + transName + '", LR_AUTO);');
+    }
+  }
+
+  actionLines.push('');
+  actionLines.push('    return 0;');
+  actionLines.push('}');
+
+  const actionContent = actionLines.join('\n');
+
+  // vuser_init.c
+  const vuserInit = `#include "web_api.h"\n\nvuser_init()\n{\n    web_set_sockets_option("SSL_VERSION", "TLS1.2");\n    return 0;\n}`;
+
+  // vuser_end.c
+  const vuserEnd = `#include "web_api.h"\n\nvuser_end()\n{\n    return 0;\n}`;
+
+  // globals.h
+  const globalsH = `#ifndef _GLOBALS_H\n#define _GLOBALS_H\n#include "lrun.h"\n#include "web_api.h"\n#include "lrw_custom_body.h"\n#endif // _GLOBALS_H`;
+
+  // default.cfg
+  const defaultCfg = `[General]\nScriptName=${scriptName}\nNumberOfIterations=1\n[ThinkTime]\nOptions=NOTHINK\nFactor=1.000000\n[Browser]\nBrowser=Microsoft Edge\nBrowserSize=MAX\n[internet]\nDNSCacheBypass=0\nMaxConnections=8\nKeepAlive=1\nHTTPVersion=11\nAcceptGzip=1\n[SSL]\nVersion=TLS12`;
+
+  // .usr
+  const usrFile = `[General]\nType=Multi\nScriptName=${scriptName}\nProtocol=HTTP\nMajorVersion=12\nMinorVersion=55\nSourceFile=Action.c\n\n[Actions]\nvuser_init=0\nAction=1\nvuser_end=2\n\n[CorrelationRules]\n\n[Snapshots]`;
+
+  const lineCount = actionLines.length;
+
+  return {
+    'Action.c': actionContent,
+    'vuser_init.c': vuserInit,
+    'vuser_end.c': vuserEnd,
+    'globals.h': globalsH,
+    'default.cfg': defaultCfg,
+    [scriptName + '.usr']: usrFile,
+    _thinkTimes: thinkTimes,
+    _lineCount: lineCount,
+    _corrCount: activeRules.length
+  };
+}
+
+// =====================================================================
+// RENDER CORRELATIONS
+// =====================================================================
+function renderCorrelations() {
+  const corrPanel = document.getElementById('corrPanel');
+
+  if (correlationRules.length === 0) {
+    corrPanel.innerHTML = `
+      <div class="empty-state" style="flex:0 0 auto;">
+        <div class="empty-icon">&#128279;</div>
+        <div class="empty-title">No auto-correlations detected</div>
+        <div class="empty-desc">You can still add manual correlations below.</div>
+      </div>
+      <div class="manual-corr-section" style="margin:12px 8px 8px;">
+        <div class="manual-corr-header">
+          <span>Manual Correlation Overrides</span>
+          <span style="font-size:10px;color:var(--text-muted);font-weight:400;margin-left:2px;">— replace exact captured value with {ParamName}</span>
+          <button class="btn btn-primary" style="margin-left:auto;padding:3px 10px;font-size:10px;" onclick="addManualCorrRow()">+ Add</button>
+          <button class="btn btn-primary" style="padding:3px 10px;font-size:10px;margin-left:6px;" onclick="regenerateFromCorrelations()">&#9654; Regenerate Script</button>
+        </div>
+        <div id="manualCorrRows"></div>
+      </div>`;
+    renderManualCorrRows();
+    return;
+  }
+
+  const enabledCount = correlationRules.filter(r => r.enabled).length;
+
+  let html = `
+    <div class="corr-notice">
+      <strong style="color:var(--magenta);">Auto-Correlation:</strong>
+      web_reg_save_param() calls are inserted before each source request.
+      Dynamic values in subsequent requests are replaced with {ParamName}.
+    </div>
+
+    <!-- TYPE filter bar — mirrors Method filter -->
+    <div class="corr-filter-bar">
+      <span class="corr-filter-label">Type:</span>
+      <select class="corr-type-select" id="corrTypeSelect" onchange="applyCorrTypeFilter()">
+        <option value="">All Types</option>
+      </select>
+      <span class="corr-match-count" id="corrTypeMatchCount" style="display:none;"></span>
+      <button class="btn-amber" id="btnExcludeCorrType" onclick="excludeByCorrType()">Exclude Matching</button>
+      <button class="btn-clear" onclick="clearCorrTypeFilter()" title="Reset type filter">&#10005;</button>
+      <div style="margin-left:auto;">
+        <button class="btn btn-primary" style="padding:5px 14px;font-size:11px;" onclick="regenerateFromCorrelations()">&#9654; Regenerate Script</button>
+      </div>
+    </div>
+
+    <!-- VALUE filter bar — mirrors Status Code filter -->
+    <div class="corr-filter-bar">
+      <span class="corr-filter-label">Value:</span>
+      <input type="text" class="corr-value-input" id="corrValueInput" placeholder="e.g. Bearer eyJ…" autocomplete="off" oninput="applyCorrValueFilter()">
+      <span class="corr-match-count" id="corrValueMatchCount" style="display:none;"></span>
+      <button class="btn-amber" id="btnExcludeCorrValue" onclick="excludeByCorrValue()">Exclude Matching</button>
+      <button class="btn-clear" onclick="clearCorrValueFilter()" title="Clear value filter">&#10005;</button>
+    </div>
+
+    <table class="corr-table" id="corrTable" style="table-layout:fixed;width:100%;">
+      <thead>
+        <tr>
+          <th style="width:28px;">&#10003;</th>
+          <th style="width:140px;">Param Name<div class="col-resizer"></div></th>
+          <th style="width:90px;">Captured From<div class="col-resizer"></div></th>
+          <th style="width:70px;">Used In<div class="col-resizer"></div></th>
+          <th style="width:100px;">Type<div class="col-resizer"></div></th>
+          <th style="width:200px;">Captured Value<div class="col-resizer"></div></th>
+          <th style="width:110px;">Left Boundary<div class="col-resizer"></div></th>
+          <th style="width:110px;">Right Boundary<div class="col-resizer"></div></th>
+          <th style="width:80px;">Found In</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+  correlationRules.forEach((rule, idx) => {
+    const isCookie = (rule.sourceType || '').toUpperCase() === 'COOKIE';
+    const disabledClass = rule.enabled ? '' : 'corr-disabled';
+    const hiddenStyle = (!rule.enabled && isCookie) ? 'display:none;' : '';
+    const foundClass = rule.foundIn === 'body' ? 'found-body' : (rule.foundIn === 'header' ? 'found-header' : 'found-url');
+    const lbTrunc = (rule.lb || '').substring(0, 15) + ((rule.lb || '').length > 15 ? '…' : '');
+    const rbTrunc = (rule.rb || '').substring(0, 15) + ((rule.rb || '').length > 15 ? '…' : '');
+
+    html += `
+        <tr class="${disabledClass}" id="corrRow${idx}" style="${hiddenStyle}">
+          <td style="text-align:center;">
+            <input type="checkbox" ${rule.enabled ? 'checked' : ''} data-corr-idx="${idx}"
+              class="corr-chk" style="accent-color:var(--magenta);width:13px;height:13px;cursor:pointer;">
+          </td>
+          <td>
+            <input type="text" class="param-input corr-name" data-corr-idx="${idx}"
+              value="${escapeHtml(rule.paramName)}" spellcheck="false">
+          </td>
+          <td style="text-align:center;">
+            <span class="session-badge">#${rule.sourceSessionNum}</span>
+          </td>
+          <td style="text-align:center;">
+            <span class="session-badge">#${rule.targetSessionNum}</span>
+          </td>
+          <td>
+            <span class="type-badge">${escapeHtml(rule.sourceType)}</span>
+          </td>
+          <td>
+            <span class="captured-value captured-value-cell" title="${escapeHtml(rule.value)}">${escapeHtml(rule.value || '')}</span>
+          </td>
+          <td>
+            <span class="boundary-code" title="${escapeHtml(rule.lb)}">${escapeHtml(lbTrunc)}</span>
+          </td>
+          <td>
+            <span class="boundary-code" title="${escapeHtml(rule.rb)}">${escapeHtml(rbTrunc)}</span>
+          </td>
+          <td>
+            <span class="found-badge ${foundClass}">${rule.foundIn}</span>
+          </td>
+        </tr>`;
+  });
+
+  html += `</tbody></table>
+
+    <!-- Excluded Correlations panel — mirrors Excluded Sessions panel -->
+    <div id="excludedCorrPanel" style="display:none;flex-direction:column;flex-shrink:0;">
+      <div class="excluded-panel-header" id="excludedCorrPanelHeader">
+        <span id="excludedCorrToggleIcon" style="font-size:10px;color:var(--text-muted);">&#9654;</span>
+        <span style="font-size:11px;font-weight:500;color:var(--text-secondary);">Excluded Correlations</span>
+        <span class="count-badge" id="excludedCorrCountBadge"
+          style="background:rgba(255,69,58,0.10);border-color:rgba(255,69,58,0.28);color:var(--danger);">0</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-muted);" id="excludedCorrPanelHint">click to expand</span>
+      </div>
+      <div class="excluded-list" id="excludedCorrList" style="display:none;"></div>
+    </div>
+
+    <!-- Excluded Cookies panel — same pattern as Excluded Correlations -->
+    <div id="excludedCookiesPanel" style="display:none;flex-direction:column;flex-shrink:0;">
+      <div class="excluded-panel-header" id="excludedCookiesPanelHeader">
+        <span id="excludedCookiesToggleIcon" style="font-size:10px;color:var(--text-muted);">&#9654;</span>
+        <span style="font-size:11px;font-weight:500;color:var(--text-secondary);">Excluded Cookies</span>
+        <span class="count-badge" id="excludedCookiesCountBadge"
+          style="background:rgba(255,69,58,0.10);border-color:rgba(255,69,58,0.28);color:var(--danger);">0</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--text-muted);" id="excludedCookiesPanelHint">click to expand</span>
+      </div>
+      <div class="excluded-list" id="excludedCookiesList" style="display:none;"></div>
+    </div>`;
+
+  html += `
+    <!-- Manual Correlation Overrides -->
+    <div class="manual-corr-section">
+      <div class="manual-corr-header">
+        <span>Manual Correlation Overrides</span>
+        <span style="font-size:10px;color:var(--text-muted);font-weight:400;margin-left:2px;">— replace exact captured value with {ParamName} in all requests</span>
+        <button class="btn btn-primary" style="margin-left:auto;padding:3px 10px;font-size:10px;" onclick="addManualCorrRow()">+ Add</button>
+      </div>
+      <div id="manualCorrRows"></div>
+    </div>`;
+
+  corrPanel.innerHTML = html;
+
+  // Render saved manual rows, populate TYPE dropdown and refresh excluded panels
+  renderManualCorrRows();
+  populateCorrTypeDropdown();
+  renderExcludedCorrList();
+  renderExcludedCookiesList();
+
+  // Wire excluded correlations panel header toggle
+  const excHeader = document.getElementById('excludedCorrPanelHeader');
+  if (excHeader) {
+    excHeader.addEventListener('click', function() {
+      const list = document.getElementById('excludedCorrList');
+      const icon = document.getElementById('excludedCorrToggleIcon');
+      const hint = document.getElementById('excludedCorrPanelHint');
+      if (!list) return;
+      const open = list.style.display !== 'none';
+      list.style.display = open ? 'none' : 'block';
+      if (icon) icon.innerHTML = open ? '&#9654;' : '&#9660;';
+      if (hint) hint.textContent = open ? 'click to expand' : 'click to collapse';
+    });
+  }
+
+  // Wire excluded cookies panel header toggle
+  const cookiesHeader = document.getElementById('excludedCookiesPanelHeader');
+  if (cookiesHeader) {
+    cookiesHeader.addEventListener('click', function() {
+      const list = document.getElementById('excludedCookiesList');
+      const icon = document.getElementById('excludedCookiesToggleIcon');
+      const hint = document.getElementById('excludedCookiesPanelHint');
+      if (!list) return;
+      const open = list.style.display !== 'none';
+      list.style.display = open ? 'none' : 'block';
+      if (icon) icon.innerHTML = open ? '&#9654;' : '&#9660;';
+      if (hint) hint.textContent = open ? 'click to expand' : 'click to collapse';
+    });
+  }
+
+  // Wire checkbox changes — uncheck = exclude (soft), check = re-include
+  corrPanel.querySelectorAll('.corr-chk').forEach(chk => {
+    chk.addEventListener('change', function() {
+      const i = parseInt(this.dataset.corrIdx);
+      correlationRules[i].enabled = this.checked;
+      const isCookie = (correlationRules[i].sourceType || '').toUpperCase() === 'COOKIE';
+      const row = document.getElementById('corrRow' + i);
+      if (row) {
+        if (this.checked) {
+          row.classList.remove('corr-disabled');
+          if (isCookie) row.style.display = '';
+        } else {
+          row.classList.add('corr-disabled');
+          if (isCookie) row.style.display = 'none';
+        }
+      }
+      updateCorrBadge();
+      renderExcludedCorrList();
+      renderExcludedCookiesList();
+    });
+  });
+
+  // Wire name input changes
+  corrPanel.querySelectorAll('.corr-name').forEach(inp => {
+    inp.addEventListener('input', function() {
+      const i = parseInt(this.dataset.corrIdx);
+      correlationRules[i].paramName = this.value;
+    });
+  });
+
+  updateCorrBadge();
+
+  // Wire column resizers
+  const corrTable = document.getElementById('corrTable');
+  if (corrTable) {
+    corrTable.querySelectorAll('th .col-resizer').forEach(function(resizer) {
+      resizer.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        const th = this.parentElement;
+        const startX = e.clientX;
+        const startWidth = th.getBoundingClientRect().width;
+        resizer.classList.add('resizing');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        function onMove(ev) {
+          th.style.width = Math.max(40, startWidth + (ev.clientX - startX)) + 'px';
+        }
+        function onUp() {
+          resizer.classList.remove('resizing');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+  }
+}
+
+function updateCorrBadge() {
+  const badge = document.getElementById('corrBadge');
+  const count = correlationRules.filter(r => r.enabled).length;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// =====================================================================
+// CORRELATION FILTER / EXCLUDE / RE-INCLUDE / REGENERATE
+// =====================================================================
+
+// Populate the TYPE dropdown with unique sourceType values
+function populateCorrTypeDropdown() {
+  const sel = document.getElementById('corrTypeSelect');
+  if (!sel) return;
+  const current = sel.value;
+  const types = [...new Set(correlationRules.map(r => r.sourceType).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Types</option>';
+  types.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    sel.appendChild(opt);
+  });
+  if (types.includes(current)) sel.value = current;
+}
+
+// Filter table rows by selected TYPE (show/hide only — does NOT exclude)
+function applyCorrTypeFilter() {
+  const val = (document.getElementById('corrTypeSelect') || {}).value || '';
+  const countEl = document.getElementById('corrTypeMatchCount');
+  if (!val) {
+    if (countEl) countEl.style.display = 'none';
+    document.querySelectorAll('#corrTable tbody tr').forEach(r => r.style.display = '');
+    return;
+  }
+  let count = 0;
+  correlationRules.forEach((rule, idx) => {
+    const row = document.getElementById('corrRow' + idx);
+    if (!row) return;
+    const match = rule.sourceType === val;
+    row.style.display = match ? '' : 'none';
+    if (match) count++;
+  });
+  if (countEl) {
+    countEl.textContent = count + ' match' + (count !== 1 ? 'es' : '');
+    countEl.style.display = 'inline';
+  }
+}
+
+// Bulk-exclude all correlations whose TYPE matches the dropdown
+function excludeByCorrType() {
+  const val = (document.getElementById('corrTypeSelect') || {}).value || '';
+  if (!val) return;
+  const isCookieType = val.toUpperCase() === 'COOKIE';
+  let count = 0;
+  correlationRules.forEach((rule, idx) => {
+    if (rule.sourceType === val && rule.enabled) {
+      rule.enabled = false;
+      const row = document.getElementById('corrRow' + idx);
+      if (row) {
+        row.classList.add('corr-disabled');
+        if (isCookieType) row.style.display = 'none';
+        const chk = row.querySelector('.corr-chk');
+        if (chk) chk.checked = false;
+      }
+      count++;
+    }
+  });
+  updateCorrBadge();
+  renderExcludedCorrList();
+  renderExcludedCookiesList();
+  const btn = document.getElementById('btnExcludeCorrType');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = 'Excluded!';
+    btn.classList.add('flash-success');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('flash-success'); }, 1500);
+  }
+  if (count) showToast(count + ' correlation' + (count !== 1 ? 's' : '') + ' excluded. Click Regenerate Script to apply.', 'info');
+}
+
+// Reset the TYPE dropdown and show all rows
+function clearCorrTypeFilter() {
+  const sel = document.getElementById('corrTypeSelect');
+  if (sel) sel.value = '';
+  const countEl = document.getElementById('corrTypeMatchCount');
+  if (countEl) countEl.style.display = 'none';
+  document.querySelectorAll('#corrTable tbody tr').forEach(r => r.style.display = '');
+}
+
+// Filter table rows by CAPTURED VALUE text (show/hide only — does NOT exclude)
+function applyCorrValueFilter() {
+  const val = ((document.getElementById('corrValueInput') || {}).value || '').trim().toLowerCase();
+  const countEl = document.getElementById('corrValueMatchCount');
+  const input = document.getElementById('corrValueInput');
+  if (input) input.classList.toggle('has-value', val.length > 0);
+  if (!val) {
+    if (countEl) countEl.style.display = 'none';
+    document.querySelectorAll('#corrTable tbody tr').forEach(r => r.style.display = '');
+    return;
+  }
+  let count = 0;
+  correlationRules.forEach((rule, idx) => {
+    const row = document.getElementById('corrRow' + idx);
+    if (!row) return;
+    const match = (rule.value || '').toLowerCase().includes(val);
+    row.style.display = match ? '' : 'none';
+    if (match) count++;
+  });
+  if (countEl) {
+    countEl.textContent = count + ' match' + (count !== 1 ? 'es' : '');
+    countEl.style.display = 'inline';
+  }
+}
+
+// Bulk-exclude all correlations whose CAPTURED VALUE contains the filter text
+function excludeByCorrValue() {
+  const val = ((document.getElementById('corrValueInput') || {}).value || '').trim().toLowerCase();
+  if (!val) return;
+  let count = 0;
+  correlationRules.forEach((rule, idx) => {
+    if ((rule.value || '').toLowerCase().includes(val) && rule.enabled) {
+      rule.enabled = false;
+      const isCookie = (rule.sourceType || '').toUpperCase() === 'COOKIE';
+      const row = document.getElementById('corrRow' + idx);
+      if (row) {
+        row.classList.add('corr-disabled');
+        if (isCookie) row.style.display = 'none';
+        const chk = row.querySelector('.corr-chk');
+        if (chk) chk.checked = false;
+      }
+      count++;
+    }
+  });
+  updateCorrBadge();
+  renderExcludedCorrList();
+  renderExcludedCookiesList();
+  const btn = document.getElementById('btnExcludeCorrValue');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = 'Excluded!';
+    btn.classList.add('flash-success');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('flash-success'); }, 1500);
+  }
+  if (count) showToast(count + ' correlation' + (count !== 1 ? 's' : '') + ' excluded. Click Regenerate Script to apply.', 'info');
+}
+
+// Clear VALUE filter input and show all rows
+function clearCorrValueFilter() {
+  const inp = document.getElementById('corrValueInput');
+  if (inp) { inp.value = ''; inp.classList.remove('has-value'); }
+  const countEl = document.getElementById('corrValueMatchCount');
+  if (countEl) countEl.style.display = 'none';
+  document.querySelectorAll('#corrTable tbody tr').forEach(r => r.style.display = '');
+}
+
+// Render the Excluded Correlations collapsible panel — mirrors renderExcludedList()
+function renderExcludedCorrList() {
+  const panel  = document.getElementById('excludedCorrPanel');
+  const list   = document.getElementById('excludedCorrList');
+  const badge  = document.getElementById('excludedCorrCountBadge');
+  if (!panel) return;
+
+  const excluded = correlationRules.map((r, i) => ({ r, i })).filter(({ r }) => !r.enabled && (r.sourceType || '').toUpperCase() !== 'COOKIE');
+  if (excluded.length === 0) { panel.style.display = 'none'; return; }
+
+  panel.style.display = 'flex';
+  badge.textContent = excluded.length;
+
+  list.innerHTML = excluded.map(({ r, i }) => `
+    <div class="excluded-item">
+      <span class="type-badge" style="font-size:9px;padding:1px 5px;">${escapeHtml(r.sourceType)}</span>
+      <span class="excluded-url" title="${escapeHtml(r.paramName)}">${escapeHtml(r.paramName)}</span>
+      <span style="flex:1;font-size:10px;color:var(--text-muted);font-family:'Cascadia Code','Fira Code','Consolas',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.value || '')}">${escapeHtml((r.value || '').substring(0, 40) + ((r.value || '').length > 40 ? '…' : ''))}</span>
+      <button class="btn-reinclude" onclick="reincludeCorrelation(${i})">&#8617; Re-include</button>
+    </div>`).join('');
+}
+
+// Render the Excluded Cookies collapsible panel — only COOKIE-type excluded correlations
+function renderExcludedCookiesList() {
+  const panel  = document.getElementById('excludedCookiesPanel');
+  const list   = document.getElementById('excludedCookiesList');
+  const badge  = document.getElementById('excludedCookiesCountBadge');
+  if (!panel) return;
+
+  const excluded = correlationRules.map((r, i) => ({ r, i })).filter(({ r }) => !r.enabled && (r.sourceType || '').toUpperCase() === 'COOKIE');
+  if (excluded.length === 0) { panel.style.display = 'none'; return; }
+
+  panel.style.display = 'flex';
+  badge.textContent = excluded.length;
+
+  list.innerHTML = excluded.map(({ r, i }) => `
+    <div class="excluded-item">
+      <span class="type-badge" style="font-size:9px;padding:1px 5px;">${escapeHtml(r.sourceType)}</span>
+      <span class="excluded-url" title="${escapeHtml(r.paramName)}">${escapeHtml(r.paramName)}</span>
+      <span style="flex:1;font-size:10px;color:var(--text-muted);font-family:'Cascadia Code','Fira Code','Consolas',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.value || '')}">${escapeHtml((r.value || '').substring(0, 40) + ((r.value || '').length > 40 ? '…' : ''))}</span>
+      <button class="btn-reinclude" onclick="reincludeCookieCorrelation(${i})">&#8617; Re-include</button>
+    </div>`).join('');
+}
+
+// Re-include a single excluded correlation — mirrors reincludeSession()
+function reincludeCorrelation(idx) {
+  if (!correlationRules[idx]) return;
+  correlationRules[idx].enabled = true;
+  const row = document.getElementById('corrRow' + idx);
+  if (row) {
+    row.classList.remove('corr-disabled');
+    row.style.display = '';
+    const chk = row.querySelector('.corr-chk');
+    if (chk) chk.checked = true;
+  }
+  updateCorrBadge();
+  renderExcludedCorrList();
+  renderExcludedCookiesList();
+}
+
+// Re-include a single excluded cookie correlation — restores row visibility
+function reincludeCookieCorrelation(idx) {
+  if (!correlationRules[idx]) return;
+  correlationRules[idx].enabled = true;
+  const row = document.getElementById('corrRow' + idx);
+  if (row) {
+    row.classList.remove('corr-disabled');
+    row.style.display = '';
+    const chk = row.querySelector('.corr-chk');
+    if (chk) chk.checked = true;
+  }
+  updateCorrBadge();
+  renderExcludedCookiesList();
+}
+
+// =====================================================================
+// MANUAL CORRELATION OVERRIDES
+// =====================================================================
+function addManualCorrRow(paramName = '', value = '') {
+  const id = ++manualCorrIdCounter;
+  manualCorrelationRules.push({ id, paramName, value });
+  renderManualCorrRows();
+}
+
+function removeManualCorrRow(id) {
+  manualCorrelationRules = manualCorrelationRules.filter(r => r.id !== id);
+  renderManualCorrRows();
+}
+
+function renderManualCorrRows() {
+  const container = document.getElementById('manualCorrRows');
+  if (!container) return;
+  if (manualCorrelationRules.length === 0) {
+    container.innerHTML = '<div class="manual-corr-empty">No manual rules. Click <strong>+ Add</strong> to enter a param name and its captured value.</div>';
+    return;
+  }
+  container.innerHTML = manualCorrelationRules.map(r => `
+    <div class="manual-corr-row">
+      <input type="text" class="param-input manual-param-name-inp"
+        placeholder="{ParamName}" value="${escapeHtml(r.paramName)}"
+        data-manual-id="${r.id}" data-field="paramName"
+        title="Parameter name (used in script as {ParamName})">
+      <input type="text" class="param-input manual-param-value-inp"
+        placeholder="Exact captured value to find and replace"
+        value="${escapeHtml(r.value)}" data-manual-id="${r.id}" data-field="value"
+        title="The exact dynamic value that appears in request bodies/URLs/headers">
+      <button class="btn-remove-row" onclick="removeManualCorrRow(${r.id})" title="Remove this rule">&#10005;</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('input[data-manual-id]').forEach(inp => {
+    inp.addEventListener('input', function() {
+      const id = parseInt(this.dataset.manualId);
+      const rule = manualCorrelationRules.find(r => r.id === id);
+      if (rule) rule[this.dataset.field] = this.value;
+    });
+  });
+}
+
+// Regenerate Action.c with the current (enabled-only) correlation set, switch to Action.c tab
+function regenerateFromCorrelations() {
+  if (parsedSessions.length === 0) {
+    showToast('No sessions loaded. Upload a SAZ file first.', 'warning');
+    return;
+  }
+  generateScript();
+  activeTab = 'action';
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === 'action');
+  });
+  renderCodePanel('action');
+}
+
+// =====================================================================
+// RENDER CODE PANEL
+// =====================================================================
+const TAB_FILE_MAP = {
+  action: 'Action.c',
+  vuser_init: 'vuser_init.c',
+  vuser_end: 'vuser_end.c',
+  globals: 'globals.h',
+  config: 'default.cfg'
+};
+
+function renderCodePanel(tab) {
+  const corrPanel = document.getElementById('corrPanel');
+  const codeScroll = document.getElementById('codeScroll');
+  const codePre = document.getElementById('codePre');
+  const codeBlock = document.getElementById('codeBlock');
+  const codeEmptyState = document.getElementById('codeEmptyState');
+  const headerFilterBar = document.getElementById('headerFilterBar');
+  const findReplaceBar = document.getElementById('findReplaceBar');
+
+  if (tab === 'correlations') {
+    codeScroll.style.display = 'none';
+    corrPanel.style.display = 'flex';
+    corrPanel.style.flexDirection = 'column';
+    headerFilterBar.style.display = 'none';
+    findReplaceBar.style.display = 'none';
+    renderCorrelations();
+    return;
+  }
+
+  corrPanel.style.display = 'none';
+  codeScroll.style.display = 'flex';
+  codeScroll.style.flexDirection = 'column';
+  codeScroll.style.flex = '1';
+
+  // Show header filter bar and find & replace bar only on Action.c when script is generated
+  headerFilterBar.style.display = (tab === 'action' && generatedFiles['Action.c']) ? 'flex' : 'none';
+  findReplaceBar.style.display  = (tab === 'action' && generatedFiles['Action.c']) ? 'flex' : 'none';
+
+  const fileKey = TAB_FILE_MAP[tab];
+  const content = fileKey ? generatedFiles[fileKey] : null;
+
+  if (!content) {
+    codeEmptyState.style.display = 'flex';
+    codePre.style.display = 'none';
+    return;
+  }
+
+  codeEmptyState.style.display = 'none';
+  codePre.style.display = 'block';
+
+  let langClass = 'language-c';
+  if (tab === 'config') langClass = 'language-ini';
+  codeBlock.className = langClass;
+  codeBlock.textContent = content;
+  hljs.highlightElement(codeBlock);
+}
+
+// =====================================================================
+// RENDER SESSIONS TABLE
+// =====================================================================
+function renderSessions(sessions) {
+  const body = document.getElementById('sessionsBody');
+  const table = document.getElementById('sessionsTable');
+  const emptyState = document.getElementById('sessionsEmptyState');
+  const selectAllRow = document.getElementById('selectAllRow');
+  const filterBar = document.getElementById('filterBar');
+  const sessionsScroll = document.getElementById('sessionsScroll');
+
+  if (!sessions || sessions.length === 0) {
+    table.style.display = 'none';
+    emptyState.style.display = 'flex';
+    selectAllRow.style.display = 'none';
+    filterBar.style.display = 'none';
+    document.getElementById('statusFilterBar').style.display = 'none';
+    document.getElementById('methodFilterBar').style.display = 'none';
+    updateSessionCountBadge(0);
+    updateSelectedCount();
+    return;
+  }
+
+  table.style.display = 'table';
+  emptyState.style.display = 'none';
+  selectAllRow.style.display = 'flex';
+  filterBar.style.display = 'flex';
+  document.getElementById('statusFilterBar').style.display = 'flex';
+  document.getElementById('methodFilterBar').style.display = 'flex';
+  populateMethodDropdown(sessions);
+
+  body.innerHTML = '';
+
+  for (let i = 0; i < sessions.length; i++) {
+    const s = sessions[i];
+    const row = document.createElement('tr');
+    row.id = 'session-row-' + i;
+    if (!s.included) row.classList.add('excluded');
+
+    row.innerHTML = `
+      <td>
+        <input type="checkbox" ${s.included ? 'checked' : ''} data-session-idx="${i}"
+          class="session-chk" style="accent-color:var(--magenta);width:13px;height:13px;cursor:pointer;">
+      </td>
+      <td style="color:var(--text-secondary);font-size:11px;">${s.num}</td>
+      <td><span class="badge ${getMethodClass(s.method)}">${escapeHtml(s.method)}</span></td>
+      <td class="url-cell" title="${escapeHtml(s.url)}">${escapeHtml(s.url)}</td>
+      <td><span class="badge ${getStatusClass(s.status)}">${s.status}</span></td>
+      <td style="color:var(--text-secondary);font-size:11px;">${formatBytes(s.bodySize)}</td>
+    `;
+
+    body.appendChild(row);
+  }
+
+  // Wire session checkboxes
+  body.querySelectorAll('.session-chk').forEach(chk => {
+    chk.addEventListener('change', function() {
+      const i = parseInt(this.dataset.sessionIdx);
+      parsedSessions[i].included = this.checked;
+      const row = document.getElementById('session-row-' + i);
+      if (row) {
+        if (this.checked) row.classList.remove('excluded');
+        else row.classList.add('excluded');
+      }
+      updateSelectedCount();
+      updateSelectAllCheckbox();
+      renderExcludedList();
+    });
+  });
+
+  updateSessionCountBadge(sessions.length);
+  updateSelectedCount();
+}
+
+function updateSessionCountBadge(n) {
+  document.getElementById('sessionCountBadge').textContent = n;
+}
+
+function updateSelectedCount() {
+  const count = parsedSessions.filter(s => s.included).length;
+  document.getElementById('selectedCount').textContent = count;
+}
+
+function updateSelectAllCheckbox() {
+  const chk = document.getElementById('selectAllChk');
+  const all = parsedSessions.length;
+  const checked = parsedSessions.filter(s => s.included).length;
+  chk.indeterminate = checked > 0 && checked < all;
+  chk.checked = checked === all && all > 0;
+}
+
+// =====================================================================
+// FILTER BAR
+// =====================================================================
+function applyFilter() {
+  const filterVal = document.getElementById('filterInput').value.trim().toLowerCase();
+  const matchCountEl = document.getElementById('filterMatchCount');
+
+  if (!filterVal) {
+    matchCountEl.style.display = 'none';
+    // Show all rows normally
+    document.querySelectorAll('#sessionsBody tr').forEach(row => {
+      row.style.display = '';
+    });
+    return;
+  }
+
+  let matchCount = 0;
+  parsedSessions.forEach((s, i) => {
+    const matches = s.url.toLowerCase().includes(filterVal);
+    const row = document.getElementById('session-row-' + i);
+    if (row) {
+      row.style.display = '';
+      if (matches) matchCount++;
+    }
+  });
+
+  matchCountEl.textContent = matchCount + ' match' + (matchCount !== 1 ? 'es' : '');
+  matchCountEl.style.display = matchCount > 0 ? 'inline' : 'none';
+}
+
+function excludeMatching() {
+  const filterVal = document.getElementById('filterInput').value.trim().toLowerCase();
+  if (!filterVal) return;
+
+  parsedSessions.forEach((s, i) => {
+    if (s.url.toLowerCase().includes(filterVal)) {
+      s.included = false;
+      const row = document.getElementById('session-row-' + i);
+      if (row) {
+        row.classList.add('excluded');
+        const chk = row.querySelector('.session-chk');
+        if (chk) chk.checked = false;
+      }
+    }
+  });
+
+  updateSelectedCount();
+  updateSelectAllCheckbox();
+  renderExcludedList();
+
+  // Flash green feedback
+  const btn = document.getElementById('btnExclude');
+  const originalText = btn.textContent;
+  btn.textContent = 'Excluded!';
+  btn.classList.add('flash-success');
+  setTimeout(() => {
+    btn.textContent = originalText;
+    btn.classList.remove('flash-success');
+  }, 1500);
+}
+
+// =====================================================================
+// TOAST
+// =====================================================================
+function showToast(message, type = 'success', duration = 3000) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+    toast.style.transition = 'all 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+// =====================================================================
+// PROGRESS HELPERS
+// =====================================================================
+function setProgress(pct) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function hideProgress() {
+  setTimeout(() => {
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('progressBar').style.width = '0%';
+  }, 600);
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('errorBanner').style.display = 'none';
+}
+
+// =====================================================================
+// HANDLE FILE
+// =====================================================================
+async function handleFile(file) {
+  hideError();
+  setProgress(10);
+
+  // Show filename
+  const fnEl = document.getElementById('uploadFilename');
+  fnEl.textContent = file.name;
+  fnEl.style.display = 'block';
+
+  try {
+    setProgress(30);
+    const sessions = await parseSAZ(file);
+    setProgress(70);
+
+    if (sessions.length === 0) {
+      showToast('No HTTP sessions found in this SAZ file.', 'warning');
+      setProgress(100);
+      hideProgress();
+      return;
+    }
+
+    // Apply static filter if option checked
+    parsedSessions = sessions;
+    if (document.getElementById('optSkipStatic').checked) {
+      parsedSessions.forEach(s => {
+        if (STATIC_EXTENSIONS.test(s.url)) s.included = false;
+      });
+    }
+
+    setProgress(85);
+
+    // Detect correlations
+    correlationRules = detectCorrelations(parsedSessions);
+    updateCorrBadge();
+
+    setProgress(100);
+    hideProgress();
+
+    renderSessions(parsedSessions);
+    document.getElementById('btnGenerate').disabled = false;
+
+    showToast(
+      'Loaded ' + sessions.length + ' session' + (sessions.length !== 1 ? 's' : '') +
+      ' — ' + correlationRules.length + ' correlation' + (correlationRules.length !== 1 ? 's' : '') + ' detected',
+      'success'
+    );
+
+    // If correlations tab active, render
+    if (activeTab === 'correlations') {
+      renderCorrelations();
+    }
+
+  } catch (err) {
+    console.error('SAZ parse error:', err);
+    showError('Invalid SAZ file — ensure it is a valid Fiddler capture.');
+    setProgress(100);
+    hideProgress();
+    showToast('Failed to parse SAZ file.', 'error');
+  }
+}
+
+// =====================================================================
+// GENERATE SCRIPT
+// =====================================================================
+function generateScript() {
+  if (parsedSessions.length === 0) return;
+
+  const scriptName = slugify(document.getElementById('scriptName').value.trim()) || 'WebScript';
+  const options = {
+    headers: document.getElementById('optHeaders').checked,
+    thinkTime: document.getElementById('optThinkTime').checked,
+    transactions: document.getElementById('optTransactions').checked,
+    skipStatic: document.getElementById('optSkipStatic').checked,
+    correlate: document.getElementById('optCorrelate').checked
+  };
+
+  // Apply static skip to included flag
+  if (options.skipStatic) {
+    parsedSessions.forEach(s => {
+      if (STATIC_EXTENSIONS.test(s.url)) s.included = false;
+    });
+    renderSessions(parsedSessions);
+  }
+
+  const result = generateVuGenScript(parsedSessions, scriptName, options);
+  generatedFiles = result;
+  baseActionC = result['Action.c'];   // snapshot for header restore
+  removedHeaders = [];
+  renderRemovedHeadersList();
+
+  // Update stats
+  const included = parsedSessions.filter(s => s.included).length;
+  document.getElementById('statRequests').textContent = included;
+  document.getElementById('statTransactions').textContent = included;
+  document.getElementById('statLines').textContent = result._lineCount;
+
+  // Enable download
+  document.getElementById('btnDownload').disabled = false;
+
+  // Render current tab
+  renderCodePanel(activeTab);
+
+  showToast(
+    'Script generated — ' + included + ' request' + (included !== 1 ? 's' : '') +
+    (options.correlate ? ', ' + result._corrCount + ' correlation' + (result._corrCount !== 1 ? 's' : '') + ' applied' : ''),
+    'success'
+  );
+}
+
+// =====================================================================
+// DOWNLOAD ZIP
+// =====================================================================
+async function downloadZip() {
+  if (!generatedFiles || !generatedFiles['Action.c']) return;
+
+  const scriptName = slugify(document.getElementById('scriptName').value.trim()) || 'WebScript';
+  const zip = new JSZip();
+  const folder = zip.folder(scriptName);
+
+  const skipKeys = ['_thinkTimes', '_lineCount', '_corrCount'];
+  for (const [filename, content] of Object.entries(generatedFiles)) {
+    if (skipKeys.includes(filename)) continue;
+    folder.file(filename, content);
+  }
+
+  // Use base64 data URI instead of blob URL to avoid Windows Mark-of-the-Web
+  // (blob: URL downloads get Zone 3 / Internet tag → SmartScreen warning on extraction)
+  const b64 = await zip.generateAsync({ type: 'base64' });
+  const a = document.createElement('a');
+  a.href = 'data:application/zip;base64,' + b64;
+  a.download = scriptName + '.zip';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('ZIP downloaded: ' + scriptName + '.zip', 'success');
+}
+
+// =====================================================================
+// TAB HANDLING
+// =====================================================================
+document.getElementById('tabBar').addEventListener('click', function(e) {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  const tab = btn.dataset.tab;
+  if (!tab) return;
+
+  activeTab = tab;
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  renderCodePanel(tab);
+});
+
+// =====================================================================
+// SELECT ALL CHECKBOX
+// =====================================================================
+document.getElementById('selectAllChk').addEventListener('change', function() {
+  parsedSessions.forEach((s, i) => {
+    s.included = this.checked;
+    const row = document.getElementById('session-row-' + i);
+    if (row) {
+      if (this.checked) row.classList.remove('excluded');
+      else row.classList.add('excluded');
+      const chk = row.querySelector('.session-chk');
+      if (chk) chk.checked = this.checked;
+    }
+  });
+  updateSelectedCount();
+  renderExcludedList();
+});
+
+// =====================================================================
+// CLEAR CURRENT SESSION
+// =====================================================================
+function clearSession() {
+  parsedSessions = [];
+  generatedFiles = {};
+  correlationRules = [];
+  manualCorrelationRules = [];
+  manualCorrIdCounter = 0;
+  baseActionC = null;
+  removedHeaders = [];
+  activeTab = 'action';
+
+  // Reset file input
+  document.getElementById('fileInput').value = '';
+  const fn = document.getElementById('uploadFilename');
+  fn.textContent = ''; fn.style.display = 'none';
+
+  // Reset error banner
+  const eb = document.getElementById('errorBanner');
+  eb.textContent = ''; eb.style.display = 'none';
+
+  // Reset buttons
+  document.getElementById('btnGenerate').disabled = true;
+  document.getElementById('btnDownload').disabled = true;
+
+  // Reset sessions panel
+  renderSessions([]);
+
+  // Reset tabs to Action.c
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-tab="action"]').classList.add('active');
+  renderCodePanel('action');
+
+  // Reset stats
+  document.getElementById('statRequests').textContent = '0';
+  document.getElementById('statTransactions').textContent = '0';
+  document.getElementById('statLines').textContent = '0';
+
+  // Reset corr badge
+  updateCorrBadge();
+
+  // Reset URL filter
+  document.getElementById('filterInput').value = '';
+  document.getElementById('filterMatchCount').style.display = 'none';
+
+  // Reset status filter
+  const sfi = document.getElementById('statusFilterInput');
+  sfi.value = ''; sfi.classList.remove('has-value');
+  document.getElementById('statusFilterMatchCount').style.display = 'none';
+
+  // Reset method filter
+  document.getElementById('methodFilterSelect').value = '';
+  document.getElementById('methodMatchCount').style.display = 'none';
+
+  // Reset header filter
+  const hfi = document.getElementById('headerFilterInput');
+  hfi.value = ''; hfi.classList.remove('has-value');
+  document.getElementById('headerFilterMatchCount').style.display = 'none';
+
+  // Reset find & replace
+  const fri = document.getElementById('findInput');
+  fri.value = ''; fri.classList.remove('has-value');
+  const rri = document.getElementById('replaceInput');
+  rri.value = ''; rri.classList.remove('has-value');
+  document.getElementById('findMatchCount').style.display = 'none';
+
+  renderRemovedHeadersList();
+  document.getElementById('excludedPanel').style.display = 'none';
+  showToast('Session cleared — ready for new SAZ file', 'success');
+}
+
+// =====================================================================
+// HEADER FILTER (Action.c — right panel)
+// =====================================================================
+function applyHeaderFilter() {
+  const val = document.getElementById('headerFilterInput').value.trim().toLowerCase();
+  const matchCountEl = document.getElementById('headerFilterMatchCount');
+  const inp = document.getElementById('headerFilterInput');
+
+  inp.classList.toggle('has-value', val.length > 0);
+
+  if (!val || !generatedFiles['Action.c']) {
+    matchCountEl.style.display = 'none';
+    return;
+  }
+
+  const lines = generatedFiles['Action.c'].split('\n');
+  const matchCount = lines.filter(line =>
+    line.toLowerCase().includes('web_add_header(') &&
+    line.toLowerCase().includes('"' + val)
+  ).length;
+
+  matchCountEl.textContent = matchCount + ' match' + (matchCount !== 1 ? 'es' : '');
+  matchCountEl.style.display = matchCount > 0 ? 'inline' : 'none';
+}
+
+function applyAllHeaderRemovals() {
+  if (!baseActionC) return;
+  let lines = baseActionC.split('\n');
+  removedHeaders.forEach(entry => {
+    lines = lines.filter(line =>
+      !(line.toLowerCase().includes('web_add_header(') &&
+        line.toLowerCase().includes('"' + entry.name))
+    );
+  });
+  generatedFiles['Action.c'] = lines.join('\n');
+  generatedFiles._lineCount = lines.length;
+}
+
+function renderRemovedHeadersList() {
+  const list = document.getElementById('removedHeadersList');
+  if (!list) return;
+  if (removedHeaders.length === 0) { list.style.display = 'none'; return; }
+  list.style.display = 'flex';
+  list.innerHTML = '<span class="removed-header-label">Removed:</span>' +
+    removedHeaders.map(e =>
+      `<span class="removed-chip">
+        ${escapeHtml(e.name)}&nbsp;<span style="opacity:0.5;">(${e.count})</span>
+        <button class="restore-chip-btn" onclick="restoreHeader('${escapeHtml(e.name).replace(/'/g,"\\'")}')">&#8617; Restore</button>
+      </span>`
+    ).join('');
+}
+
+function restoreHeader(name) {
+  removedHeaders = removedHeaders.filter(e => e.name !== name);
+  applyAllHeaderRemovals();
+  renderCodePanel('action');
+  renderRemovedHeadersList();
+  showToast('Restored web_add_header("' + name + '") lines', 'success');
+}
+
+function removeMatchingHeaders() {
+  const val = document.getElementById('headerFilterInput').value.trim().toLowerCase();
+  if (!val || !baseActionC) return;
+
+  if (removedHeaders.find(e => e.name === val)) {
+    showToast('"' + val + '" is already removed — use Restore to undo', 'warning');
+    return;
+  }
+
+  // Count how many lines will be removed from the current Action.c
+  const lines = generatedFiles['Action.c'].split('\n');
+  const count = lines.filter(line =>
+    line.toLowerCase().includes('web_add_header(') &&
+    line.toLowerCase().includes('"' + val)
+  ).length;
+
+  if (count === 0) {
+    showToast('No web_add_header("' + val + '", ...) lines found', 'warning');
+    return;
+  }
+
+  removedHeaders.push({ name: val, count });
+  applyAllHeaderRemovals();
+  renderCodePanel('action');
+  renderRemovedHeadersList();
+
+  const inp = document.getElementById('headerFilterInput');
+  inp.value = ''; inp.classList.remove('has-value');
+  document.getElementById('headerFilterMatchCount').style.display = 'none';
+
+  const btn = document.getElementById('btnRemoveHeader');
+  const orig = btn.textContent;
+  btn.textContent = 'Removed ' + count + '!';
+  btn.classList.add('flash-success');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('flash-success'); }, 1800);
+
+  showToast('Removed ' + count + ' web_add_header("' + val + '") line' + (count !== 1 ? 's' : '') + ' — click Restore to undo', 'success');
+}
+
+// =====================================================================
+// EXCLUDED SESSIONS LIST
+// =====================================================================
+function renderExcludedList() {
+  const panel = document.getElementById('excludedPanel');
+  const list = document.getElementById('excludedList');
+  const badge = document.getElementById('excludedCountBadge');
+  if (!panel) return;
+
+  const excluded = parsedSessions.map((s, i) => ({ s, i })).filter(({ s }) => !s.included);
+
+  if (excluded.length === 0) { panel.style.display = 'none'; return; }
+
+  panel.style.display = 'flex';
+  badge.textContent = excluded.length;
+
+  // Rebuild list content (keep collapse state)
+  list.innerHTML = excluded.map(({ s, i }) =>
+    `<div class="excluded-item">
+      <span class="method-badge ${getMethodClass(s.method)}" style="font-size:9px;padding:1px 5px;">${escapeHtml(s.method)}</span>
+      <span class="excluded-url" title="${escapeHtml(s.url)}">${escapeHtml(s.url)}</span>
+      <button class="btn-reinclude" onclick="reincludeSession(${i})">&#8617; Re-include</button>
+    </div>`
+  ).join('');
+}
+
+function reincludeSession(idx) {
+  if (!parsedSessions[idx]) return;
+  parsedSessions[idx].included = true;
+  const row = document.getElementById('session-row-' + idx);
+  if (row) {
+    row.classList.remove('excluded');
+    const chk = row.querySelector('.session-chk');
+    if (chk) chk.checked = true;
+  }
+  updateSelectedCount();
+  updateSelectAllCheckbox();
+  renderExcludedList();
+}
+
+// =====================================================================
+// STATUS CODE FILTER
+// =====================================================================
+function applyStatusFilter() {
+  const val = document.getElementById('statusFilterInput').value.trim();
+  const matchCountEl = document.getElementById('statusFilterMatchCount');
+  const input = document.getElementById('statusFilterInput');
+
+  input.classList.toggle('has-value', val.length > 0);
+
+  if (!val) {
+    matchCountEl.style.display = 'none';
+    document.querySelectorAll('#sessionsBody tr').forEach(row => row.style.display = '');
+    return;
+  }
+
+  let matchCount = 0;
+  parsedSessions.forEach((s, i) => {
+    const status = (s.status || '').toString();
+    const matches = status.startsWith(val);
+    const row = document.getElementById('session-row-' + i);
+    if (row) {
+      row.style.display = matches ? '' : 'none';
+      if (matches) matchCount++;
+    }
+  });
+
+  matchCountEl.textContent = matchCount + ' match' + (matchCount !== 1 ? 'es' : '');
+  matchCountEl.style.display = matchCount > 0 ? 'inline' : 'none';
+}
+
+function excludeByStatus() {
+  const val = document.getElementById('statusFilterInput').value.trim();
+  if (!val) return;
+
+  parsedSessions.forEach((s, i) => {
+    const status = (s.status || '').toString();
+    if (status.startsWith(val)) {
+      s.included = false;
+      const row = document.getElementById('session-row-' + i);
+      if (row) {
+        row.classList.add('excluded');
+        const chk = row.querySelector('.session-chk');
+        if (chk) chk.checked = false;
+      }
+    }
+  });
+
+  updateSelectedCount();
+  updateSelectAllCheckbox();
+  renderExcludedList();
+
+  const btn = document.getElementById('btnExcludeStatus');
+  const orig = btn.textContent;
+  btn.textContent = 'Excluded!';
+  btn.classList.add('flash-success');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('flash-success'); }, 1500);
+}
+
+// =====================================================================
+// METHOD FILTER
+// =====================================================================
+function populateMethodDropdown(sessions) {
+  const sel = document.getElementById('methodFilterSelect');
+  const current = sel.value;
+  // Collect unique methods
+  const methods = [...new Set(sessions.map(s => (s.method || '').toUpperCase()).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Methods</option>';
+  methods.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    sel.appendChild(opt);
+  });
+  // Restore previous selection if still valid
+  if (methods.includes(current)) sel.value = current;
+}
+
+function applyMethodFilter() {
+  const val = document.getElementById('methodFilterSelect').value.trim().toUpperCase();
+  const matchCountEl = document.getElementById('methodMatchCount');
+
+  if (!val) {
+    matchCountEl.style.display = 'none';
+    document.querySelectorAll('#sessionsBody tr').forEach(row => {
+      if (row.style.display === 'none' && !row.classList.contains('method-hidden')) return;
+      row.classList.remove('method-hidden');
+      row.style.display = '';
+    });
+    // Re-apply any active status/url filters
+    applyStatusFilter();
+    applyFilter();
+    return;
+  }
+
+  let matchCount = 0;
+  parsedSessions.forEach((s, i) => {
+    const method = (s.method || '').toUpperCase();
+    const row = document.getElementById('session-row-' + i);
+    if (row) {
+      const matches = method === val;
+      row.classList.toggle('method-hidden', !matches);
+      row.style.display = matches ? '' : 'none';
+      if (matches) matchCount++;
+    }
+  });
+
+  matchCountEl.textContent = matchCount + ' session' + (matchCount !== 1 ? 's' : '');
+  matchCountEl.style.display = matchCount >= 0 ? 'inline' : 'none';
+}
+
+function excludeByMethod() {
+  const val = document.getElementById('methodFilterSelect').value.trim().toUpperCase();
+  if (!val) return;
+
+  parsedSessions.forEach((s, i) => {
+    const method = (s.method || '').toUpperCase();
+    if (method === val) {
+      s.included = false;
+      const row = document.getElementById('session-row-' + i);
+      if (row) {
+        row.classList.add('excluded');
+        const chk = row.querySelector('.session-chk');
+        if (chk) chk.checked = false;
+      }
+    }
+  });
+
+  updateSelectedCount();
+  updateSelectAllCheckbox();
+  renderExcludedList();
+
+  const btn = document.getElementById('btnExcludeMethod');
+  const orig = btn.textContent;
+  btn.textContent = 'Excluded!';
+  btn.classList.add('flash-success');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('flash-success'); }, 1500);
+}
+
+
+// =====================================================================
+// FILTER BAR WIRING
+// =====================================================================
+document.getElementById('filterInput').addEventListener('input', applyFilter);
+document.getElementById('btnExclude').addEventListener('click', excludeMatching);
+document.getElementById('btnClearFilter').addEventListener('click', function() {
+  document.getElementById('filterInput').value = '';
+  document.getElementById('filterMatchCount').style.display = 'none';
+  applyFilter();
+});
+
+document.getElementById('statusFilterInput').addEventListener('input', applyStatusFilter);
+document.getElementById('btnExcludeStatus').addEventListener('click', excludeByStatus);
+document.getElementById('btnClearStatusFilter').addEventListener('click', function() {
+  const inp = document.getElementById('statusFilterInput');
+  inp.value = '';
+  inp.classList.remove('has-value');
+  document.getElementById('statusFilterMatchCount').style.display = 'none';
+  applyStatusFilter();
+});
+
+document.getElementById('methodFilterSelect').addEventListener('change', applyMethodFilter);
+document.getElementById('btnExcludeMethod').addEventListener('click', excludeByMethod);
+document.getElementById('btnClearMethodFilter').addEventListener('click', function() {
+  document.getElementById('methodFilterSelect').value = '';
+  document.getElementById('methodMatchCount').style.display = 'none';
+  applyMethodFilter();
+});
+
+// =====================================================================
+// FIND & REPLACE (Action.c — right panel)
+// =====================================================================
+function applyFindFilter() {
+  const val = document.getElementById('findInput').value;
+  const matchCountEl = document.getElementById('findMatchCount');
+  const inp = document.getElementById('findInput');
+  inp.classList.toggle('has-value', val.length > 0);
+  if (!val) {
+    matchCountEl.style.display = 'none';
+    return;
+  }
+  const content = generatedFiles['Action.c'] || '';
+  const count = content.split(val).length - 1;
+  matchCountEl.textContent = count + ' match' + (count !== 1 ? 'es' : '');
+  matchCountEl.style.display = count > 0 ? 'inline' : 'none';
+}
+
+function performReplaceAll() {
+  const findVal = document.getElementById('findInput').value;
+  const replaceVal = document.getElementById('replaceInput').value;
+  if (!findVal) {
+    showToast('Enter text to find first', 'warning');
+    return;
+  }
+  const content = generatedFiles['Action.c'] || '';
+  const count = content.split(findVal).length - 1;
+  if (count === 0) {
+    showToast('No matches found', 'warning');
+    return;
+  }
+  generatedFiles['Action.c'] = content.split(findVal).join(replaceVal);
+  baseActionC = generatedFiles['Action.c'];   // keep header-filter snapshot in sync
+  renderCodePanel('action');
+  applyFindFilter();                           // refresh match count (should now be 0)
+  showToast('Replaced ' + count + ' occurrence' + (count !== 1 ? 's' : ''), 'success');
+}
+
+// =====================================================================
+// EVENT LISTENERS
+// =====================================================================
+// Header filter (Action.c right panel)
+document.getElementById('headerFilterInput').addEventListener('input', applyHeaderFilter);
+document.getElementById('btnRemoveHeader').addEventListener('click', removeMatchingHeaders);
+document.getElementById('btnClearHeaderFilter').addEventListener('click', function() {
+  const inp = document.getElementById('headerFilterInput');
+  inp.value = ''; inp.classList.remove('has-value');
+  document.getElementById('headerFilterMatchCount').style.display = 'none';
+});
+
+// Find & Replace (Action.c right panel)
+document.getElementById('findInput').addEventListener('input', applyFindFilter);
+document.getElementById('btnReplaceAll').addEventListener('click', performReplaceAll);
+document.getElementById('btnClearFindReplace').addEventListener('click', function() {
+  const fi = document.getElementById('findInput');
+  fi.value = ''; fi.classList.remove('has-value');
+  const ri = document.getElementById('replaceInput');
+  ri.value = ''; ri.classList.remove('has-value');
+  document.getElementById('findMatchCount').style.display = 'none';
+});
+
+// Clear session button
+document.getElementById('btnClearSession').addEventListener('click', clearSession);
+
+// Excluded sessions panel collapse toggle
+document.getElementById('excludedPanelHeader').addEventListener('click', function() {
+  const list = document.getElementById('excludedList');
+  const icon = document.getElementById('excludedToggleIcon');
+  const hint = document.getElementById('excludedPanelHint');
+  const isOpen = list.style.display !== 'none';
+  list.style.display = isOpen ? 'none' : 'block';
+  icon.textContent = isOpen ? '\u25BA' : '\u25BC';
+  hint.textContent = isOpen ? 'click to expand' : 'click to collapse';
+});
+
+// =====================================================================
+// BUTTONS
+// =====================================================================
+document.getElementById('btnGenerate').addEventListener('click', generateScript);
+document.getElementById('btnDownload').addEventListener('click', downloadZip);
+
+// =====================================================================
+// FILE INPUT / DRAG AND DROP
+// =====================================================================
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', function() {
+  if (this.files && this.files[0]) {
+    handleFile(this.files[0]);
+  }
+});
+
+uploadZone.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  this.classList.add('drag-over');
+});
+
+uploadZone.addEventListener('dragleave', function() {
+  this.classList.remove('drag-over');
+});
+
+uploadZone.addEventListener('drop', function(e) {
+  e.preventDefault();
+  this.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.saz')) {
+    handleFile(file);
+  } else if (file) {
+    showError('Please drop a valid .saz file.');
+  }
+});
+
+// =====================================================================
+// KEYBOARD SHORTCUTS
+// =====================================================================
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'g') {
+    e.preventDefault();
+    if (!document.getElementById('btnGenerate').disabled) {
+      generateScript();
+    }
+  }
+  if (e.ctrlKey && e.key === 'd') {
+    e.preventDefault();
+    if (!document.getElementById('btnDownload').disabled) {
+      downloadZip();
+    }
+  }
+});
+
+// =====================================================================
+// INIT
+// =====================================================================
+renderCodePanel('action');
+
+// =====================================================================
+// COPY TO CLIPBOARD
+// =====================================================================
+document.getElementById('btnCopy').addEventListener('click', function() {
+  const btn = this;
+  const label = document.getElementById('btnCopyLabel');
+
+  let textToCopy = null;
+
+  if (activeTab === 'correlations') {
+    // Build plain-text summary of the correlations table
+    if (correlationRules.length > 0) {
+      const lines = ['Param Name\tCaptured From\tUsed In\tType\tLeft Boundary\tRight Boundary\tFound In'];
+      correlationRules.forEach(function(rule) {
+        lines.push([
+          rule.paramName,
+          '#' + rule.sourceSessionNum,
+          '#' + rule.targetSessionNum,
+          rule.sourceType,
+          rule.lb,
+          rule.rb,
+          rule.foundIn
+        ].join('\t'));
+      });
+      textToCopy = lines.join('\n');
+    }
+  } else {
+    const fileKey = TAB_FILE_MAP[activeTab];
+    textToCopy = fileKey ? (generatedFiles[fileKey] || null) : null;
+  }
+
+  if (!textToCopy) {
+    label.textContent = 'Nothing to copy';
+    btn.style.color = 'var(--warning)';
+    setTimeout(function() {
+      label.textContent = 'Copy';
+      btn.style.color = '';
+    }, 1500);
+    return;
+  }
+
+  function onSuccess() {
+    label.textContent = '\u2713 Copied!';
+    btn.style.color = 'var(--success)';
+    setTimeout(function() {
+      label.textContent = 'Copy';
+      btn.style.color = '';
+    }, 1500);
+  }
+
+  function onFail() {
+    label.textContent = 'Nothing to copy';
+    btn.style.color = 'var(--warning)';
+    setTimeout(function() {
+      label.textContent = 'Copy';
+      btn.style.color = '';
+    }, 1500);
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(textToCopy).then(onSuccess).catch(function() {
+      // Fallback
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = textToCopy;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        onSuccess();
+      } catch (e) {
+        onFail();
+      }
+    });
+  } else {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = textToCopy;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      onSuccess();
+    } catch (e) {
+      onFail();
+    }
+  }
+});
+
+// Add hover style for btnCopy via JS (since inline :hover isn't possible)
+(function() {
+  var btn = document.getElementById('btnCopy');
+  btn.addEventListener('mouseenter', function() {
+    btn.style.borderColor = 'rgba(255,255,255,0.4)';
+    btn.style.color = '#ffffff';
+  });
+  btn.addEventListener('mouseleave', function() {
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  });
+})();
+
+// =====================================================================
+// RESIZABLE PANELS
+// =====================================================================
+(function() {
+  const layout = document.querySelector('.main-layout');
+  const leftPanel = document.querySelector('.left-panel');
+  const middlePanel = document.querySelector('.middle-panel');
+  const rightPanel = document.querySelector('.right-panel');
+  const handleLM = document.getElementById('resizeHandleLM');
+  const handleMR = document.getElementById('resizeHandleMR');
+
+  const MIN_LEFT = 180;
+  const MIN_MIDDLE = 200;
+  const MIN_RIGHT = 300;
+
+  function startResize(e, handle, onMove) {
+    e.preventDefault();
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    function onMouseMove(ev) { onMove(ev.clientX); }
+    function onMouseUp() {
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  // Left-Middle handle: dragging changes left panel width
+  handleLM.addEventListener('mousedown', function(e) {
+    const startX = e.clientX;
+    const startWidth = leftPanel.getBoundingClientRect().width;
+    startResize(e, handleLM, function(x) {
+      const newWidth = Math.max(MIN_LEFT, startWidth + (x - startX));
+      leftPanel.style.width = newWidth + 'px';
+      leftPanel.style.minWidth = newWidth + 'px';
+    });
+  });
+
+  // Middle-Right handle: dragging changes right panel width (inverse: drag left = wider right)
+  handleMR.addEventListener('mousedown', function(e) {
+    const startX = e.clientX;
+    const startWidth = rightPanel.getBoundingClientRect().width;
+    startResize(e, handleMR, function(x) {
+      const newWidth = Math.max(MIN_RIGHT, startWidth - (x - startX));
+      rightPanel.style.width = newWidth + 'px';
+      rightPanel.style.minWidth = newWidth + 'px';
+    });
+  });
+})();
+</script>
+</body>
+</html>
